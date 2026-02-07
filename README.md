@@ -44,6 +44,7 @@ ms-agents-ecosystem-lab/
 │   └── README.md
 ├── docs/                           # Documentación
 │   └── azure-cli-auth.md           # Guía de autenticación Azure CLI
+├── requirements.txt                # Dependencias Python (único para todo el proyecto)
 ├── .env.example                    # Plantilla de variables de entorno
 ├── .gitignore
 └── README.md                       # Este archivo
@@ -101,11 +102,27 @@ copy ..\..\.env.generated ..\..\.env
 
 > 💡 Puedes revisar [.env.example](.env.example) para entender cada variable antes de ejecutar.
 
-### 6. Ejecutar un proyecto
+### 6. Instalar dependencias
 
 ```powershell
-cd platforms/foundry/01-simple-chat
+# Desde la raíz del proyecto
+cd ..\..
+
+# Crear entorno virtual (si no existe)
+python -m venv .venv
+.venv\Scripts\Activate.ps1
+
+# Instalar todas las dependencias
 pip install -r requirements.txt
+```
+
+> 📦 El archivo `requirements.txt` en la raíz contiene todas las dependencias organizadas por secciones (comunes, Foundry, MAF, CrewAI, desarrollo).
+
+### 7. Ejecutar un proyecto
+
+```powershell
+# Asegúrate de tener el entorno virtual activado
+cd platforms/foundry/01-simple-chat
 python src/main.py
 ```
 

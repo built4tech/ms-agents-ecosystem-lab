@@ -7,10 +7,12 @@ Agente capaz de interactuar con Microsoft Graph API para acceder a datos de cale
 
 ## Ejecución
 ```bash
-# Instalar dependencias
+# Instalar dependencias (desde la raíz del proyecto)
+cd ../../..
 pip install -r requirements.txt
 
 # Ejecutar
+cd platforms/crewai/02-graph-agent
 python src/main.py
 ```
 
