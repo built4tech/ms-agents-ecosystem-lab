@@ -5,6 +5,13 @@ __pycache__/
 
 # Environments
 .venv
+.env
+.env.generated
+!.env.example
+
+# Infrastructure config (contains subscription IDs)
+infra/config/lab-config.ps1
+!infra/config/lab-config.example.ps1
 
 # VS Code
 .vscode/*
