@@ -1,13 +1,15 @@
 
 # ms-agents-ecosystem-lab
 
-Laboratorio comparativo de agentes en el ecosistema Microsoft:
+Laboratorio comparativo de frameworks de agentes de IA:
 - **Microsoft Agent Framework (MAF)**
-- **Microsoft Foundry SDK**
-- **CrewAI** (con modelos alojados en Azure/OpenAI/Ollama)
+- **LangChain**
+- **CrewAI**
+
+Todos utilizan modelos desplegados en Azure AI Foundry.
 
 ## Objetivos
-1. Entender implicaciones arquitectónicas de usar Foundry vs MAF vs CrewAI.
+1. Entender implicaciones arquitectónicas de usar MAF vs LangChain vs CrewAI.
 2. Medir complejidad, observabilidad, extensibilidad y coste.
 3. Proveer ejemplos incrementales: **simple chat**, **Graph-enabled**, **orquestado**.
 
@@ -16,7 +18,7 @@ Laboratorio comparativo de agentes en el ecosistema Microsoft:
 ```
 ms-agents-ecosystem-lab/
 ├── platforms/                      # Implementaciones por framework
-│   ├── foundry/                    # Microsoft Foundry SDK
+│   ├── langchain/                  # LangChain
 │   │   ├── 01-simple-chat/
 │   │   ├── 02-graph-agent/
 │   │   └── 03-orchestrated/
@@ -35,7 +37,7 @@ ms-agents-ecosystem-lab/
 │   │   ├── 00-auth.ps1
 │   │   ├── 01-resource-group.ps1
 │   │   ├── 02-ai-hub.ps1
-│   │   ├── 03-project-foundry.ps1
+│   │   ├── 03-project-langchain.ps1
 │   │   ├── 04-project-maf.ps1
 │   │   ├── 05-project-crewai.ps1
 │   │   ├── deploy-all.ps1
@@ -116,13 +118,13 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-> 📦 El archivo `requirements.txt` en la raíz contiene todas las dependencias organizadas por secciones (comunes, Foundry, MAF, CrewAI, desarrollo).
+> 📦 El archivo `requirements.txt` en la raíz contiene todas las dependencias organizadas por secciones (comunes, LangChain, MAF, CrewAI, desarrollo).
 
 ### 7. Ejecutar un proyecto
 
 ```powershell
 # Asegúrate de tener el entorno virtual activado
-cd platforms/foundry/01-simple-chat
+cd platforms/langchain/01-simple-chat
 python src/main.py
 ```
 
@@ -138,18 +140,18 @@ python src/main.py
 
 | Framework | Endpoint | Autenticación | Agentes en Foundry Portal |
 |-----------|----------|---------------|---------------------------|
-| **Foundry SDK** | `.services.ai.azure.com` | DefaultAzureCredential | ✅ Sí |
 | **MAF** | `.services.ai.azure.com` | DefaultAzureCredential | ✅ Sí |
+| **LangChain** | `.openai.azure.com` | DefaultAzureCredential (token) | ❌ No |
 | **CrewAI** | `.openai.azure.com` | DefaultAzureCredential (token) | ❌ No |
 
-> **Nota**: Foundry SDK y MAF crean agentes persistentes visibles en el portal de Azure AI Foundry. CrewAI usa el modelo desplegado pero los agentes solo existen en memoria durante la ejecución.
+> **Nota**: MAF crea agentes persistentes visibles en el portal de Azure AI Foundry. LangChain y CrewAI usan el modelo desplegado pero los agentes solo existen en memoria durante la ejecución.
 
 ## Arquitectura en Azure
 
 ```
 Resource Group: rg-agents-lab
 └── AI Foundry Hub: hub-agents-lab
-    ├── project-foundry-agents/    → Foundry SDK
+    ├── project-langchain-agents/  → LangChain
     ├── project-maf-agents/        → MAF
     └── project-crewai-agents/     → CrewAI
 ```

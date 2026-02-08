@@ -1,6 +1,6 @@
-# Foundry - Graph Agent
+# LangChain - Graph Agent
 
-Agente con integración de Microsoft Graph usando Foundry SDK.
+Agente con integración de Microsoft Graph usando LangChain.
 
 ## Descripción
 Agente capaz de interactuar con Microsoft Graph API para acceder a datos de calendario, correo, archivos, etc.
@@ -12,7 +12,7 @@ cd ../../..
 pip install -r requirements.txt
 
 # Ejecutar
-cd platforms/foundry/02-graph-agent
+cd platforms/langchain/02-graph-agent
 python src/main.py
 ```
 

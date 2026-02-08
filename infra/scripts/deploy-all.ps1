@@ -20,7 +20,7 @@ $scripts = @(
     @{ Name = "00-auth.ps1"; Description = "Verificar autenticación" },
     @{ Name = "01-resource-group.ps1"; Description = "Crear Resource Group" },
     @{ Name = "02-ai-hub.ps1"; Description = "Crear AI Foundry Hub" },
-    @{ Name = "03-project-foundry.ps1"; Description = "Crear proyecto Foundry" },
+    @{ Name = "03-project-langchain.ps1"; Description = "Crear proyecto LangChain" },
     @{ Name = "04-project-maf.ps1"; Description = "Crear proyecto MAF" },
     @{ Name = "05-project-crewai.ps1"; Description = "Crear proyecto CrewAI" }
 )

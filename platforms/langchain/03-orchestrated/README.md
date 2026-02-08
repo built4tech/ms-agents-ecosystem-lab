@@ -1,6 +1,6 @@
-# Foundry - Orchestrated
+# LangChain - Orchestrated
 
-Sistema multi-agente orquestado usando Foundry SDK.
+Sistema multi-agente orquestado usando LangChain.
 
 ## Descripción
 Implementación de múltiples agentes coordinados para tareas complejas.
@@ -12,7 +12,7 @@ cd ../../..
 pip install -r requirements.txt
 
 # Ejecutar
-cd platforms/foundry/03-orchestrated
+cd platforms/langchain/03-orchestrated
 python src/main.py
 ```
 

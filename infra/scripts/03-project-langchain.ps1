@@ -1,15 +1,15 @@
 # ============================================================================
-# 03-project-foundry.ps1 - Crear proyecto para Foundry SDK
+# 03-project-langchain.ps1 - Crear proyecto para LangChain
 # ============================================================================
 
 $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
 
-$projectName = $script:Projects.Foundry
+$projectName = $script:Projects.LangChain
 
 Write-Host "`n" + "="*60 -ForegroundColor Magenta
-Write-Host " PROYECTO: FOUNDRY SDK" -ForegroundColor Magenta
+Write-Host " PROYECTO: LANGCHAIN" -ForegroundColor Magenta
 Write-Host "="*60 -ForegroundColor Magenta
 
 # ----------------------------------------------------------------------------
@@ -60,7 +60,7 @@ name: $deploymentName
 model_id: azureml://registries/azure-openai/models/$($script:ModelName)/versions/$($script:ModelVersion)
 "@
     
-    $yamlPath = "$env:TEMP\deployment-foundry.yaml"
+    $yamlPath = "$env:TEMP\deployment-langchain.yaml"
     $deploymentYaml | Out-File -FilePath $yamlPath -Encoding utf8
     
     try {
@@ -83,7 +83,7 @@ model_id: azureml://registries/azure-openai/models/$($script:ModelName)/versions
 # 3. Obtener endpoints
 # ----------------------------------------------------------------------------
 Write-Host "`n" + "-"*60 -ForegroundColor Gray
-Write-Host " FOUNDRY PROJECT INFO" -ForegroundColor Yellow
+Write-Host " LANGCHAIN PROJECT INFO" -ForegroundColor Yellow
 Write-Host "-"*60 -ForegroundColor Gray
 
 Write-Endpoint "Project Name" $projectName
@@ -91,14 +91,8 @@ Write-Endpoint "Resource Group" $script:ResourceGroupName
 Write-Endpoint "Hub" $script:HubName
 Write-Endpoint "Location" $script:Location
 
-# Obtener connection string
-$subscriptionId = az account show --query id -o tsv
-$connectionString = "$($script:Location).api.azureml.ms;$subscriptionId;$($script:ResourceGroupName);$projectName"
-
-Write-Host "`n  CONNECTION STRING (para código):" -ForegroundColor Cyan
-Write-Host "  $connectionString" -ForegroundColor White
-
-Write-Host "`n" + "="*60 -ForegroundColor Green
-Write-Host " ✓ PROYECTO FOUNDRY LISTO" -ForegroundColor Green
-Write-Host "="*60 -ForegroundColor Green
-Write-Host ""
+# Mostrar endpoint OpenAI-compatible
+$endpoint = "https://$projectName.openai.azure.com"
+Write-Host "`n  ENDPOINT (OpenAI-compatible):" -ForegroundColor Cyan
+Write-Host "  $endpoint" -ForegroundColor White
+Write-Host "`n  Usa DefaultAzureCredential con azure_ad_token_provider" -ForegroundColor Gray

@@ -7,7 +7,7 @@ Scripts de PowerShell para desplegar y gestionar la infraestructura en Azure.
 ```
 Resource Group: rg-agents-lab
 └── AI Foundry Hub: hub-agents-lab
-    ├── project-foundry-agents/    → Foundry SDK experiments
+    ├── project-langchain-agents/  → LangChain experiments
     │   └── gpt-4o-mini deployment
     ├── project-maf-agents/        → Microsoft Agent Framework experiments
     │   └── gpt-4o-mini deployment
@@ -57,7 +57,7 @@ az account show
 | `00-auth.ps1` | Verifica autenticación y muestra subscription activa |
 | `01-resource-group.ps1` | Crea el Resource Group compartido |
 | `02-ai-hub.ps1` | Crea el AI Foundry Hub y recursos dependientes |
-| `03-project-foundry.ps1` | Crea proyecto y deployment para Foundry SDK |
+| `03-project-langchain.ps1` | Crea proyecto y deployment para LangChain |
 | `04-project-maf.ps1` | Crea proyecto y deployment para MAF |
 | `05-project-crewai.ps1` | Crea proyecto y deployment para CrewAI |
 | `deploy-all.ps1` | **Ejecuta todos los scripts en orden** |
@@ -106,7 +106,7 @@ Si prefieres desplegar componentes específicos:
 .\02-ai-hub.ps1
 
 # Solo proyecto específico (requiere Hub)
-.\03-project-foundry.ps1
+.\03-project-langchain.ps1
 .\04-project-maf.ps1
 .\05-project-crewai.ps1
 ```
@@ -125,9 +125,9 @@ $script:HubName = "hub-agents-lab"
 
 # Proyectos
 $script:Projects = @{
-    Foundry = "project-foundry-agents"
-    MAF     = "project-maf-agents"
-    CrewAI  = "project-crewai-agents"
+    LangChain = "project-langchain-agents"
+    MAF       = "project-maf-agents"
+    CrewAI    = "project-crewai-agents"
 }
 
 # Modelo
@@ -148,28 +148,30 @@ Todos los frameworks usan `DefaultAzureCredential` para autenticación y variabl
 |----------|-------------|
 | `*_ENDPOINT` | URL del servicio |
 | `*_DEPLOYMENT_NAME` | Nombre del modelo desplegado |
-| `*_PROJECT_NAME` | Nombre del proyecto (solo Foundry/MAF) |
 
-### Foundry SDK (`platforms/foundry/`)
+### LangChain (`platforms/langchain/`)
 
-Usa endpoint de Azure AI Services. Los agentes aparecen en el portal de Foundry.
+Usa endpoint OpenAI-compatible de Azure con DefaultAzureCredential.
 
 ```python
 import os
-from azure.ai.projects import AIProjectClient
-from azure.identity import DefaultAzureCredential
+from langchain_openai import AzureChatOpenAI
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 
-client = AIProjectClient(
-    endpoint=os.getenv("FOUNDRY_ENDPOINT"),
-    credential=DefaultAzureCredential()
+token_provider = get_bearer_token_provider(
+    DefaultAzureCredential(),
+    "https://cognitiveservices.azure.com/.default"
 )
 
-# Crear agente (visible en Foundry Portal)
-agent = client.agents.create_agent(
-    model=os.getenv("FOUNDRY_DEPLOYMENT_NAME"),
-    name="foundry-agent",
-    instructions="Eres un asistente útil."
+llm = AzureChatOpenAI(
+    azure_endpoint=os.getenv("LANGCHAIN_ENDPOINT"),
+    azure_deployment=os.getenv("LANGCHAIN_DEPLOYMENT_NAME"),
+    azure_ad_token_provider=token_provider,
+    api_version="2024-02-01"
 )
+
+response = llm.invoke("Hola, ¿cómo estás?")
+print(response.content)
 ```
 
 ### Microsoft Agent Framework (`platforms/maf/`)
@@ -226,7 +228,7 @@ agent = Agent(
 
 | Framework | Tipo de Endpoint | Auth | Agentes en Portal |
 |-----------|------------------|------|-------------------|
-| Foundry SDK | `.services.ai.azure.com` | DefaultAzureCredential | ✅ Sí |
+| LangChain | `.openai.azure.com` | DefaultAzureCredential (token) | ❌ No |
 | MAF | `.services.ai.azure.com` | DefaultAzureCredential | ✅ Sí |
 | CrewAI | `.openai.azure.com` | DefaultAzureCredential (token) | ❌ No |
 
@@ -275,7 +277,7 @@ infra/
 │   ├── 00-auth.ps1
 │   ├── 01-resource-group.ps1
 │   ├── 02-ai-hub.ps1
-│   ├── 03-project-foundry.ps1
+│   ├── 03-project-langchain.ps1
 │   ├── 04-project-maf.ps1
 │   ├── 05-project-crewai.ps1
 │   ├── deploy-all.ps1

@@ -1,6 +1,6 @@
-# Foundry - Simple Chat
+# LangChain - Simple Chat
 
-Agente básico de chat usando Microsoft Foundry SDK.
+Agente básico de chat usando LangChain con Azure OpenAI.
 
 ## Descripción
 Implementación mínima de un agente conversacional.
@@ -12,7 +12,7 @@ cd ../../..
 pip install -r requirements.txt
 
 # Ejecutar
-cd platforms/foundry/01-simple-chat
+cd platforms/langchain/01-simple-chat
 python src/main.py
 ```
 

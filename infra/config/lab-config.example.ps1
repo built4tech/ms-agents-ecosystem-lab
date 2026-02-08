@@ -27,9 +27,9 @@ $script:LogAnalyticsName = "log-agents-lab"
 
 # Proyectos
 $script:Projects = @{
-    Foundry = "project-foundry-agents"
-    MAF     = "project-maf-agents"
-    CrewAI  = "project-crewai-agents"
+    LangChain = "project-langchain-agents"
+    MAF       = "project-maf-agents"
+    CrewAI    = "project-crewai-agents"
 }
 
 # Modelo a desplegar
