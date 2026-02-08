@@ -1,4 +1,4 @@
-# ============================================================================
+﻿# ============================================================================
 # 01-resource-group.ps1 - Crear Resource Group
 # ============================================================================
 
@@ -6,9 +6,9 @@ $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
 
-Write-Host "`n" + "="*60 -ForegroundColor Magenta
+Write-Host "`n$("="*60)" -ForegroundColor Magenta
 Write-Host " CREACIÓN DE RESOURCE GROUP" -ForegroundColor Magenta
-Write-Host "="*60 -ForegroundColor Magenta
+Write-Host $("="*60) -ForegroundColor Magenta
 
 # Verificar si el RG ya existe
 Write-Step "Verificando si el Resource Group existe..."
@@ -31,16 +31,16 @@ if ($rgExists -eq "true") {
 }
 
 # Mostrar información del RG
-Write-Host "`n" + "-"*60 -ForegroundColor Gray
+Write-Host "`n$("-"*60)" -ForegroundColor Gray
 Write-Host " RESOURCE GROUP INFO" -ForegroundColor Yellow
-Write-Host "-"*60 -ForegroundColor Gray
+Write-Host $("-"*60) -ForegroundColor Gray
 
 $rgInfo = az group show --name $script:ResourceGroupName --output json | ConvertFrom-Json
 Write-Endpoint "Nombre" $rgInfo.name
 Write-Endpoint "Ubicación" $rgInfo.location
 Write-Endpoint "ID" $rgInfo.id
 
-Write-Host "`n" + "="*60 -ForegroundColor Green
-Write-Host " ✓ RESOURCE GROUP LISTO" -ForegroundColor Green
-Write-Host "="*60 -ForegroundColor Green
+Write-Host "`n$("="*60)" -ForegroundColor Green
+Write-Host " RESOURCE GROUP LISTO" -ForegroundColor Green
+Write-Host $("="*60) -ForegroundColor Green
 Write-Host ""

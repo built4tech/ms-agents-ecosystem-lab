@@ -62,7 +62,7 @@ $duration = $endTime - $startTime
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
 Write-Host "║                                                              ║" -ForegroundColor Green
-Write-Host "║          ✓ INFRAESTRUCTURA DESPLEGADA EXITOSAMENTE          ║" -ForegroundColor Green
+Write-Host "║            INFRAESTRUCTURA DESPLEGADA EXITOSAMENTE           ║" -ForegroundColor Green
 Write-Host "║                                                              ║" -ForegroundColor Green
 Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
 Write-Host ""

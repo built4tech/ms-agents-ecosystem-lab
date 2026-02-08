@@ -24,7 +24,8 @@ $script:StorageAccountName = "stagentslab$(Get-Random -Minimum 1000 -Maximum 999
 $script:KeyVaultName = "kv-agents-lab-$(Get-Random -Minimum 1000 -Maximum 9999)"
 $script:AppInsightsName = "appi-agents-lab"
 $script:LogAnalyticsName = "log-agents-lab"
-
+# Azure OpenAI (recurso compartido para todos los proyectos)
+$script:AzureOpenAIName = "aoai-agents-lab"
 # Proyectos
 $script:Projects = @{
     LangChain = "project-langchain-agents"
@@ -56,17 +57,17 @@ function Get-TagsString {
 
 function Write-Step {
     param([string]$Message)
-    Write-Host "`n► $Message" -ForegroundColor Cyan
+    Write-Host "`n>> $Message" -ForegroundColor Cyan
 }
 
 function Write-Success {
     param([string]$Message)
-    Write-Host "✓ $Message" -ForegroundColor Green
+    Write-Host "[OK] $Message" -ForegroundColor Green
 }
 
 function Write-Error {
     param([string]$Message)
-    Write-Host "✗ $Message" -ForegroundColor Red
+    Write-Host "[X] $Message" -ForegroundColor Red
 }
 
 function Write-Info {

@@ -88,8 +88,8 @@ foreach ($project in $script:Projects.GetEnumerator()) {
     Write-Endpoint "Project Name" $projectName
     Write-Endpoint "Deployment" $deploymentName
     
-    if ($framework -eq "CrewAI") {
-        # CrewAI usa endpoint OpenAI-compatible con DefaultAzureCredential
+    if ($framework -eq "CrewAI" -or $framework -eq "LangChain") {
+        # CrewAI y LangChain usan endpoint OpenAI-compatible con DefaultAzureCredential
         $endpoint = "https://$projectName.openai.azure.com"
         Write-Endpoint "Endpoint (OpenAI)" $endpoint
         
@@ -103,7 +103,7 @@ ${prefix}_DEPLOYMENT_NAME=$deploymentName
 
 "@
     } else {
-        # Foundry y MAF usan endpoint de AI Services
+        # MAF usa endpoint de AI Services (Azure AI Foundry)
         $endpoint = "https://$projectName.services.ai.azure.com"
         Write-Endpoint "Endpoint (AI Services)" $endpoint
         
@@ -139,7 +139,7 @@ if ($saveEnv -eq "s" -or $saveEnv -eq "S") {
     $envPath = Join-Path (Split-Path -Parent (Split-Path -Parent $scriptPath)) ".env.generated"
     $envContent | Out-File -FilePath $envPath -Encoding utf8
     Write-Host ""
-    Write-Host "  ✓ Archivo guardado en: $envPath" -ForegroundColor Green
+    Write-Host "  Archivo guardado en: $envPath" -ForegroundColor Green
     Write-Host "  Copia las variables necesarias a tu archivo .env" -ForegroundColor Gray
 }
 

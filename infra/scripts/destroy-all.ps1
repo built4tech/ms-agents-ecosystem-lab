@@ -90,7 +90,7 @@ if ($waitForDeletion -eq "s" -or $waitForDeletion -eq "S") {
     Write-Host ""
     Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
     Write-Host "║                                                              ║" -ForegroundColor Green
-    Write-Host "║          ✓ INFRAESTRUCTURA ELIMINADA EXITOSAMENTE           ║" -ForegroundColor Green
+    Write-Host "║            INFRAESTRUCTURA ELIMINADA EXITOSAMENTE            ║" -ForegroundColor Green
     Write-Host "║                                                              ║" -ForegroundColor Green
     Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
     Write-Host ""
