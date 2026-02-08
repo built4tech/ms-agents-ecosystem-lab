@@ -10,22 +10,6 @@ Write-Host "`n$("="*60)" -ForegroundColor Magenta
 Write-Host " VERIFICACIÓN DE AUTENTICACIÓN" -ForegroundColor Magenta
 Write-Host $("="*60) -ForegroundColor Magenta
 
-# ----------------------------------------------------------------------------
-# Verificar si se ejecuta como Administrador
-# ----------------------------------------------------------------------------
-Write-Step "Verificando permisos de ejecución..."
-
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-
-if (-not $isAdmin) {
-    Write-Error "Este script requiere permisos de Administrador"
-    Write-Info "Ejecuta PowerShell como Administrador o usa:"
-    Write-Info "  Start-Process powershell -Verb RunAs -ArgumentList '-NoExit', '-File', '$($MyInvocation.MyCommand.Path)'"
-    exit 1
-}
-
-Write-Success "Ejecutando como Administrador"
-
 # Verificar si Azure CLI está instalado
 Write-Step "Verificando Azure CLI..."
 try {

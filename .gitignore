@@ -13,6 +13,9 @@ __pycache__/
 infra/config/lab-config.ps1
 !infra/config/lab-config.example.ps1
 
+# LLM context memory (personal notes)
+contexto_memoria_LLM.md
+
 # VS Code
 .vscode/*
 
