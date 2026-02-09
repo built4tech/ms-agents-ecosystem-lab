@@ -19,9 +19,8 @@ azure-identity>=1.15.0
 # ----------------------------------------------------------------------------
 # Microsoft Agent Framework (MAF)
 # ----------------------------------------------------------------------------
-azure-ai-projects>=1.0.0b1
-
-# azure-ai-inference>=1.0.0  # Solo si usas inferencia directa (no Agents)
+--pre
+agent-framework
 
 # ----------------------------------------------------------------------------
 # CrewAI

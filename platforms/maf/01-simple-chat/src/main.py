@@ -1,183 +1,102 @@
 """
-Simple Chat Agent usando Microsoft Agent Framework (MAF)
-=========================================================
+Simple Chat usando Microsoft Agent Framework (MAF)
+=================================================
 
-Este script implementa un agente de chat interactivo usando Azure AI Projects SDK.
-El agente utiliza el modelo gpt-4o-mini desplegado en Azure OpenAI a través de
-la conexión configurada en el AI Foundry Hub.
+Este script implementa un chat interactivo usando Agent Framework.
+Lee el endpoint y el deployment desde el archivo .env en la raiz.
 
 Uso:
     python main.py
 
 Comandos:
     - Escribe tu mensaje y presiona Enter para chatear
-    - Escribe 'exit' o 'salir' para terminar la sesión
+    - Escribe 'exit' o 'salir' para terminar la sesion
     - Escribe 'clear' o 'limpiar' para limpiar el historial
 """
 
+import asyncio
 import os
-import sys
 from pathlib import Path
 
-# Cargar .env desde la raíz del proyecto
-project_root = Path(__file__).parent.parent.parent.parent.parent
-sys.path.insert(0, str(project_root))
-
+from agent_framework.azure import AzureOpenAIChatClient
+from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
-load_dotenv(project_root / ".env")
-
-from azure.identity import DefaultAzureCredential
-from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import AgentThread, MessageRole
 
 
-def get_project_client() -> AIProjectClient:
-    """
-    Crea y retorna un cliente de AI Project usando DefaultAzureCredential.
-    """
-    endpoint = os.getenv("MAF_ENDPOINT", "https://project-maf-agents.services.ai.azure.com")
-    
-    print(f"Conectando a: {endpoint}")
-    
-    client = AIProjectClient(
-        credential=DefaultAzureCredential(),
-        endpoint=endpoint
+PROJECT_ROOT = Path(__file__).resolve().parents[4]
+
+
+def load_env() -> None:
+    """Carga variables desde el .env en la raiz del repo."""
+    load_dotenv(PROJECT_ROOT / ".env")
+
+
+def ensure_azure_openai_env() -> None:
+    """Asegura que las variables esperadas por Agent Framework esten presentes."""
+    endpoint = os.getenv("MAF_ENDPOINT") 
+    deployment = os.getenv("MAF_DEPLOYMENT_NAME") 
+
+    if not endpoint or not deployment:
+        raise ValueError(
+            "Falta MAF_ENDPOINT y/o MAF_DEPLOYMENT_NAME en el .env"
+        )
+
+    os.environ.setdefault("AZURE_OPENAI_ENDPOINT", endpoint)
+    os.environ.setdefault("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME", deployment)
+
+
+def build_agent():
+    """Crea el agente de chat completion con Azure OpenAI."""
+    client = AzureOpenAIChatClient(credential=AzureCliCredential())
+    return client.as_agent(
+        name="SimpleChat",
+        instructions=(
+            "Eres un asistente util y claro. Responde en espanol a menos "
+            "que el usuario escriba en otro idioma."
+        ),
     )
-    
-    return client
 
 
-def create_agent(client: AIProjectClient, model: str = "gpt-4o-mini"):
-    """
-    Crea un agente de chat con el modelo especificado.
-    """
-    agent = client.agents.create_agent(
-        model=model,
-        name="chat-assistant",
-        instructions="""Eres un asistente de chat amigable y útil. 
-        Responde en español a menos que el usuario te escriba en otro idioma.
-        Sé conciso pero informativo en tus respuestas."""
-    )
-    
-    print(f"Agente creado: {agent.id}")
-    return agent
-
-
-def chat_loop(client: AIProjectClient, agent, thread: AgentThread):
-    """
-    Bucle principal de chat interactivo.
-    """
-    print("\n" + "="*60)
+async def chat_loop() -> None:
+    """Bucle principal de chat interactivo."""
+    print("\n" + "=" * 60)
     print(" CHAT INTERACTIVO - Microsoft Agent Framework")
-    print("="*60)
+    print("=" * 60)
     print(" Escribe 'exit' o 'salir' para terminar")
     print(" Escribe 'clear' o 'limpiar' para nuevo chat")
-    print("="*60 + "\n")
-    
+    print("=" * 60 + "\n")
+
+    agent = build_agent()
+
     while True:
         try:
-            # Obtener input del usuario
-            user_input = input("\n[Tú]: ").strip()
-            
-            # Comandos especiales
+            user_input = input("\n[Tu]: ").strip()
             if not user_input:
                 continue
-            
-            if user_input.lower() in ['exit', 'salir', 'quit']:
-                print("\n¡Hasta luego!")
+
+            if user_input.lower() in ["exit", "salir", "quit"]:
+                print("\nHasta luego.")
                 break
-            
-            if user_input.lower() in ['clear', 'limpiar']:
-                # Crear nuevo thread para limpiar historial
-                thread = client.agents.threads.create()
+
+            if user_input.lower() in ["clear", "limpiar"]:
+                agent = build_agent()
                 print("\n[Sistema]: Historial limpiado. Nuevo chat iniciado.")
                 continue
-            
-            # Enviar mensaje al agente
-            client.agents.messages.create(
-                thread_id=thread.id,
-                role=MessageRole.USER,
-                content=user_input
-            )
-            
-            # Ejecutar el agente y esperar respuesta
-            run = client.agents.runs.create_and_process(
-                thread_id=thread.id,
-                agent_id=agent.id
-            )
-            
-            # Verificar el estado del run
-            if run.status == "failed":
-                print(f"\n[Error]: {run.last_error}")
-                continue
-            
-            # Obtener los mensajes del thread
-            messages = client.agents.messages.list(thread_id=thread.id)
-            
-            # Encontrar la última respuesta del asistente
-            for message in messages:
-                if message.role == MessageRole.AGENT:
-                    # Obtener el contenido del mensaje
-                    for content_part in message.content:
-                        if hasattr(content_part, 'text'):
-                            print(f"\n[Asistente]: {content_part.text.value}")
-                    break
-                    
+
+            result = await agent.run(user_input)
+            print(f"\n[Asistente]: {result.text}")
         except KeyboardInterrupt:
-            print("\n\n¡Sesión interrumpida!")
+            print("\n\nSesion interrumpida.")
             break
-        except Exception as e:
-            print(f"\n[Error]: {str(e)}")
-            continue
+        except Exception as exc:
+            print(f"\n[Error]: {exc}")
 
 
-def cleanup(client: AIProjectClient, agent, thread: AgentThread):
-    """
-    Limpia los recursos creados (agente y thread).
-    """
-    try:
-        print("\nLimpiando recursos...")
-        client.agents.threads.delete(thread.id)
-        client.agents.delete(agent.id)
-        print("Recursos limpiados correctamente.")
-    except Exception as e:
-        print(f"Error al limpiar recursos: {e}")
-
-
-def main():
-    """
-    Función principal.
-    """
-    print("\n" + "="*60)
-    print(" Iniciando Simple Chat Agent (MAF)")
-    print("="*60)
-    
-    client = None
-    agent = None
-    thread = None
-    
-    try:
-        # Crear cliente
-        client = get_project_client()
-        
-        # Crear agente
-        model = os.getenv("MAF_DEPLOYMENT_NAME", "gpt-4o-mini")
-        agent = create_agent(client, model)
-        
-        # Crear thread para la conversación
-        thread = client.agents.threads.create()
-        print(f"Thread creado: {thread.id}")
-        
-        # Iniciar bucle de chat
-        chat_loop(client, agent, thread)
-        
-    except Exception as e:
-        print(f"\nError fatal: {e}")
-        sys.exit(1)
-    finally:
-        # Limpiar recursos al salir
-        if client and agent and thread:
-            cleanup(client, agent, thread)
+def main() -> None:
+    """Funcion principal."""
+    load_env()
+    ensure_azure_openai_env()
+    asyncio.run(chat_loop())
 
 
 if __name__ == "__main__":
