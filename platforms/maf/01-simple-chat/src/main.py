@@ -1,9 +1,10 @@
 """
-Simple Chat usando Microsoft Agent Framework (MAF)
-=================================================
+Simple Chat usando Microsoft Agent Framework (MAF) via Azure AI Foundry
+========================================================================
 
-Este script implementa un chat interactivo usando Agent Framework.
-Lee el endpoint y el deployment desde el archivo .env en la raiz.
+Este script implementa un chat interactivo usando AIProjectClient.
+Toma el endpoint del Hub de Azure AI Foundry desde el .env para trazabilidad
+completa, Content Safety y otros controles de seguridad.
 
 Uso:
     python main.py
@@ -18,8 +19,8 @@ import asyncio
 import os
 from pathlib import Path
 
-from agent_framework.azure import AzureOpenAIChatClient
-from azure.identity import AzureCliCredential
+from azure.ai.projects import AIProjectClient
+from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
 
@@ -31,42 +32,46 @@ def load_env() -> None:
     load_dotenv(PROJECT_ROOT / ".env")
 
 
-def ensure_azure_openai_env() -> None:
-    """Asegura que las variables esperadas por Agent Framework esten presentes."""
-    endpoint = os.getenv("MAF_ENDPOINT") 
-    deployment = os.getenv("MAF_DEPLOYMENT_NAME") 
+def validate_env_vars() -> tuple[str, str, str]:
+    """Valida y retorna las variables de entorno necesarias."""
+    endpoint = os.getenv("MAF_ENDPOINT")
+    project_name = os.getenv("MAF_PROJECT_NAME")
+    deployment = os.getenv("MAF_DEPLOYMENT_NAME")
 
-    if not endpoint or not deployment:
+    if not all([endpoint, project_name, deployment]):
         raise ValueError(
-            "Falta MAF_ENDPOINT y/o MAF_DEPLOYMENT_NAME en el .env"
+            "Faltan variables en .env: MAF_ENDPOINT, MAF_PROJECT_NAME, MAF_DEPLOYMENT_NAME"
         )
 
-    os.environ.setdefault("AZURE_OPENAI_ENDPOINT", endpoint)
-    os.environ.setdefault("AZURE_OPENAI_CHAT_DEPLOYMENT_NAME", deployment)
+    return endpoint, project_name, deployment
 
 
-def build_agent():
-    """Crea el agente de chat completion con Azure OpenAI."""
-    client = AzureOpenAIChatClient(credential=AzureCliCredential())
-    return client.as_agent(
-        name="SimpleChat",
-        instructions=(
-            "Eres un asistente util y claro. Responde en espanol a menos "
-            "que el usuario escriba en otro idioma."
-        ),
+def get_project_client(endpoint: str) -> AIProjectClient:
+    """Crea cliente de proyecto AI Foundry."""
+    return AIProjectClient(
+        endpoint=endpoint,
+        credential=DefaultAzureCredential(),
     )
 
 
-async def chat_loop() -> None:
+async def chat_loop(openai_client, deployment: str) -> None:
     """Bucle principal de chat interactivo."""
     print("\n" + "=" * 60)
     print(" CHAT INTERACTIVO - Microsoft Agent Framework")
     print("=" * 60)
     print(" Escribe 'exit' o 'salir' para terminar")
-    print(" Escribe 'clear' o 'limpiar' para nuevo chat")
+    print(" Escribe 'clear' o 'limpiar' para limpiar el historial")
     print("=" * 60 + "\n")
 
-    agent = build_agent()
+    messages = [
+        {
+            "role": "system",
+            "content": (
+                "Eres un asistente util y claro. Responde en espanol a menos "
+                "que el usuario escriba en otro idioma."
+            ),
+        }
+    ]
 
     while True:
         try:
@@ -79,24 +84,44 @@ async def chat_loop() -> None:
                 break
 
             if user_input.lower() in ["clear", "limpiar"]:
-                agent = build_agent()
+                messages[:] = messages[:1]
                 print("\n[Sistema]: Historial limpiado. Nuevo chat iniciado.")
                 continue
 
-            result = await agent.run(user_input)
-            print(f"\n[Asistente]: {result.text}")
+            messages.append({"role": "user", "content": user_input})
+
+            response = openai_client.chat.completions.create(
+                model=deployment,
+                messages=messages,
+                temperature=0.7,
+                max_tokens=800,
+            )
+
+            assistant_message = response.choices[0].message.content
+            messages.append({"role": "assistant", "content": assistant_message})
+            print(f"\n[Asistente]: {assistant_message}")
         except KeyboardInterrupt:
             print("\n\nSesion interrumpida.")
             break
         except Exception as exc:
             print(f"\n[Error]: {exc}")
+            if messages and messages[-1].get("role") == "user":
+                messages.pop()
 
 
 def main() -> None:
     """Funcion principal."""
     load_env()
-    ensure_azure_openai_env()
-    asyncio.run(chat_loop())
+    endpoint, project_name, deployment = validate_env_vars()
+
+    print(f"\n[INFO] Conectando a Hub: {project_name}")
+    print(f"[INFO] Endpoint: {endpoint}")
+    print(f"[INFO] Deployment: {deployment}\n")
+
+    project_client = get_project_client(endpoint)
+    openai_client = project_client.get_openai_client()
+
+    asyncio.run(chat_loop(openai_client, deployment))
 
 
 if __name__ == "__main__":

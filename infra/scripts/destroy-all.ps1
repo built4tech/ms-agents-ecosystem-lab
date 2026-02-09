@@ -18,14 +18,8 @@ Write-Host ""
 Write-Host "  Se eliminarán los siguientes recursos:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  Resource Group: $($script:ResourceGroupName)" -ForegroundColor White
-Write-Host "    └── AI Hub: $($script:HubName)" -ForegroundColor Gray
-Write-Host "        ├── Project: $($script:Projects.Foundry)" -ForegroundColor Gray
-Write-Host "        ├── Project: $($script:Projects.MAF)" -ForegroundColor Gray
-Write-Host "        └── Project: $($script:Projects.CrewAI)" -ForegroundColor Gray
-Write-Host "    └── Storage Account" -ForegroundColor Gray
-Write-Host "    └── Key Vault" -ForegroundColor Gray
-Write-Host "    └── Application Insights" -ForegroundColor Gray
-Write-Host "    └── Log Analytics Workspace" -ForegroundColor Gray
+Write-Host "    └── Foundry (AIServices) y deployments" -ForegroundColor Gray
+Write-Host "        └── Proyectos para agentes (projects)" -ForegroundColor Gray
 Write-Host ""
 
 # Confirmar eliminación
@@ -38,6 +32,17 @@ if ($confirmation -ne "ELIMINAR") {
     Write-Host "  Operación cancelada." -ForegroundColor Yellow
     Write-Host ""
     exit 0
+}
+
+$foundryNames = @()
+foreach ($proj in $script:Projects.GetEnumerator()) {
+    if ($proj.Value.FoundryName) { $foundryNames += $proj.Value.FoundryName }
+}
+
+# Establecer subscription si se especificó
+if ($script:SubscriptionId) {
+    Write-Step "Estableciendo subscription: $($script:SubscriptionId)"
+    az account set --subscription $script:SubscriptionId | Out-Null
 }
 
 Write-Host ""
@@ -54,6 +59,53 @@ if ($rgExists -eq "false") {
 
 Write-Step "Eliminando Resource Group '$($script:ResourceGroupName)'..."
 Write-Info "Esto puede tardar varios minutos..."
+
+# Intentar eliminar y purgar los recursos Foundry antes de eliminar el RG para evitar soft-delete colgando
+if ($foundryNames.Count -gt 0) {
+    Write-Step "Eliminando y purgando recursos Foundry (AIServices) para evitar soft-delete..."
+
+    foreach ($foundryName in $foundryNames) {
+        Write-Info "Procesando $foundryName"
+
+        # Si existe activo, eliminarlo primero
+        $foundryExists = az cognitiveservices account show `
+            --name $foundryName `
+            --resource-group $script:ResourceGroupName `
+            --output json 2>$null
+
+        if ($foundryExists) {
+            Write-Info "  Eliminando cuenta activa..."
+            az cognitiveservices account delete `
+                --name $foundryName `
+                --resource-group $script:ResourceGroupName `
+                --yes `
+                --output none
+        }
+
+        # Purgar si está soft-deleted
+        $deletedList = az cognitiveservices account list-deleted `
+            --location $script:Location `
+            --output json 2>$null | ConvertFrom-Json
+
+        $deleted = $deletedList | Where-Object { $_.name -eq $foundryName }
+
+        if ($deleted) {
+            Write-Info "  Purga de soft-delete..."
+            $purgeCmd = @(
+                "az", "cognitiveservices", "account", "purge",
+                "--name", $foundryName,
+                "--location", $script:Location
+            )
+            if ($script:SubscriptionId) { $purgeCmd += @("--subscription", $script:SubscriptionId) }
+            $purgeCmd += "--output"; $purgeCmd += "none"
+
+            & @purgeCmd
+            Write-Success "  Purga completada"
+        } else {
+            Write-Info "  No hay soft-delete para purgar"
+        }
+    }
+}
 
 $startTime = Get-Date
 

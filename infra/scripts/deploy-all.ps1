@@ -19,10 +19,9 @@ $startTime = Get-Date
 $scripts = @(
     @{ Name = "00-auth.ps1"; Description = "Verificar autenticación" },
     @{ Name = "01-resource-group.ps1"; Description = "Crear Resource Group" },
-    @{ Name = "02-ai-hub.ps1"; Description = "Crear AI Foundry Hub" },
-    @{ Name = "03-project-langchain.ps1"; Description = "Crear proyecto LangChain" },
-    @{ Name = "04-project-maf.ps1"; Description = "Crear proyecto MAF" },
-    @{ Name = "05-project-crewai.ps1"; Description = "Crear proyecto CrewAI" }
+    @{ Name = "02-foundry-langchain.ps1"; Description = "Crear Foundry LangChain (AIServices)" },
+    @{ Name = "03-foundry-maf.ps1"; Description = "Crear Foundry MAF (AIServices)" },
+    @{ Name = "04-foundry-crewai.ps1"; Description = "Crear Foundry CrewAI (AIServices)" }
 )
 
 $totalScripts = $scripts.Count

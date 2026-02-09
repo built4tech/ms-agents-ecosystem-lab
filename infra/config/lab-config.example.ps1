@@ -1,5 +1,5 @@
 # ============================================================================
-# Configuración centralizada del laboratorio
+# Configuración centralizada del laboratorio - 3 recursos Foundry (AIServices)
 # ============================================================================
 # INSTRUCCIONES:
 # 1. Copia este archivo a 'lab-config.ps1' en la misma carpeta
@@ -16,28 +16,24 @@ $script:Location = "eastus2"
 # Resource Group
 $script:ResourceGroupName = "rg-agents-lab"
 
-# AI Foundry Hub
-$script:HubName = "hub-agents-lab"
-
-# Recursos dependientes del Hub (nombres generados automáticamente)
-$script:StorageAccountName = "stagentslab$(Get-Random -Minimum 1000 -Maximum 9999)"
-$script:KeyVaultName = "kv-agents-lab-$(Get-Random -Minimum 1000 -Maximum 9999)"
-$script:AppInsightsName = "appi-agents-lab"
-$script:LogAnalyticsName = "log-agents-lab"
-# Azure OpenAI (recurso compartido para todos los proyectos)
-$script:AzureOpenAIName = "aoai-agents-lab"
-# Proyectos
-$script:Projects = @{
-    LangChain = "project-langchain-agents"
-    MAF       = "project-maf-agents"
-    CrewAI    = "project-crewai-agents"
-}
-
-# Modelo a desplegar
+# Modelo a desplegar en todos los recursos Foundry
 $script:ModelName = "gpt-4o-mini"
 $script:ModelVersion = "2024-07-18"
 $script:ModelSku = "GlobalStandard"
 $script:ModelCapacity = 10  # TPM en miles (10 = 10K tokens por minuto)
+
+# Configuración de los 3 recursos Foundry separados
+$script:Projects = @{
+    "LangChain" = @{
+        FoundryName       = "foundry-langchain-lab"
+    }
+    "MAF" = @{
+        FoundryName       = "foundry-maf-lab"
+    }
+    "CrewAI" = @{
+        FoundryName       = "foundry-crewai-lab"
+    }
+}
 
 # Tags para recursos
 $script:Tags = @{
@@ -51,7 +47,7 @@ $script:Tags = @{
 # ============================================================================
 
 function Get-TagsString {
-    $tagPairs = $script:Tags.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
+    $tagPairs = $script:Tags.GetEnumerator() | ForEach-Object { "$(($_.Key)=$($_.Value))" }
     return $tagPairs -join " "
 }
 
@@ -72,7 +68,7 @@ function Write-Error {
 
 function Write-Info {
     param([string]$Message)
-    Write-Host "  $Message" -ForegroundColor Gray
+    Write-Host "    $Message" -ForegroundColor Gray
 }
 
 function Write-Endpoint {
@@ -80,6 +76,6 @@ function Write-Endpoint {
         [string]$Name,
         [string]$Value
     )
-    Write-Host "  $Name" -ForegroundColor Yellow -NoNewline
+    Write-Host -NoNewline "    $Name" -ForegroundColor Yellow
     Write-Host ": $Value" -ForegroundColor White
 }

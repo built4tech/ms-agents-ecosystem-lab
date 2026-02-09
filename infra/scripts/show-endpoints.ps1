@@ -38,7 +38,7 @@ Write-Host ""
 Write-Endpoint "Subscription ID" $subscriptionId
 Write-Endpoint "Resource Group" $script:ResourceGroupName
 Write-Endpoint "Location" $script:Location
-Write-Endpoint "AI Hub" $script:HubName
+Write-Endpoint "Recurso Foundry (AIServices)" "ver por proyecto"
 
 # ----------------------------------------------------------------------------
 # Generar contenido del archivo .env
@@ -57,7 +57,8 @@ AZURE_LOCATION=$($script:Location)
 
 "@
 
-$deploymentName = "$($script:ModelName)-deployment"
+# El nombre de deployment coincide con el modelo en los scripts actuales
+$deploymentName = $script:ModelName
 
 # ----------------------------------------------------------------------------
 # Procesar cada proyecto
@@ -65,7 +66,7 @@ $deploymentName = "$($script:ModelName)-deployment"
 
 foreach ($project in $script:Projects.GetEnumerator()) {
     $framework = $project.Key
-    $projectName = $project.Value
+    $foundryName = $project.Value.FoundryName
     $prefix = $framework.ToUpper()
     
     Write-Host ""
@@ -74,47 +75,35 @@ foreach ($project in $script:Projects.GetEnumerator()) {
     Write-Host "└──────────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
     Write-Host ""
     
-    # Verificar si el proyecto existe
-    $projectExists = az ml workspace show `
-        --name $projectName `
+    # Verificar si el recurso Foundry existe
+    $foundryExists = az cognitiveservices account show `
+        --name $foundryName `
         --resource-group $script:ResourceGroupName `
         --output json 2>$null
     
-    if (-not $projectExists) {
-        Write-Host "  ⚠️  Proyecto no encontrado" -ForegroundColor Red
+    if (-not $foundryExists) {
+        Write-Host "  ⚠️  Recurso Foundry no encontrado" -ForegroundColor Red
         continue
     }
     
-    Write-Endpoint "Project Name" $projectName
+    Write-Endpoint "Foundry Name" $foundryName
     Write-Endpoint "Deployment" $deploymentName
     
-    if ($framework -eq "CrewAI" -or $framework -eq "LangChain") {
-        # CrewAI y LangChain usan endpoint OpenAI-compatible con DefaultAzureCredential
-        $endpoint = "https://$projectName.openai.azure.com"
-        Write-Endpoint "Endpoint (OpenAI)" $endpoint
-        
-        Write-Host ""
-        Write-Host "  Nota: Usa DefaultAzureCredential para autenticación" -ForegroundColor Gray
-        
-        $envContent += @"
-# $framework (endpoint OpenAI-compatible con DefaultAzureCredential)
-${prefix}_ENDPOINT=$endpoint
+    $endpointOpenAI = "https://$foundryName.openai.azure.com"
+    $endpointApi = "https://$foundryName.services.ai.azure.com"
+    Write-Endpoint "Endpoint (OpenAI)" $endpointOpenAI
+    Write-Endpoint "Endpoint (API)" $endpointApi
+    
+    Write-Host ""
+    Write-Host "  Nota: Usa credenciales AAD (DefaultAzureCredential)" -ForegroundColor Gray
+    
+    $envContent += @"
+# $framework (recurso Foundry AIServices)
+${prefix}_ENDPOINT_OPENAI=$endpointOpenAI
+${prefix}_ENDPOINT_API=$endpointApi
 ${prefix}_DEPLOYMENT_NAME=$deploymentName
 
 "@
-    } else {
-        # MAF usa endpoint de AI Services (Azure AI Foundry)
-        $endpoint = "https://$projectName.services.ai.azure.com"
-        Write-Endpoint "Endpoint (AI Services)" $endpoint
-        
-        $envContent += @"
-# $framework (endpoint Azure AI Services)
-${prefix}_ENDPOINT=$endpoint
-${prefix}_PROJECT_NAME=$projectName
-${prefix}_DEPLOYMENT_NAME=$deploymentName
-
-"@
-    }
 }
 
 # ----------------------------------------------------------------------------
