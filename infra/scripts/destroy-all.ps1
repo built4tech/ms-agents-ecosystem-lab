@@ -78,13 +78,13 @@ if ($foundryNames.Count -gt 0) {
             az cognitiveservices account delete `
                 --name $foundryName `
                 --resource-group $script:ResourceGroupName `
-                --yes `
                 --output none
         }
 
         # Purgar si está soft-deleted
         $deletedList = az cognitiveservices account list-deleted `
             --location $script:Location `
+            --subscription $script:SubscriptionId `
             --output json 2>$null | ConvertFrom-Json
 
         $deleted = $deletedList | Where-Object { $_.name -eq $foundryName }
@@ -94,7 +94,9 @@ if ($foundryNames.Count -gt 0) {
             $purgeCmd = @(
                 "az", "cognitiveservices", "account", "purge",
                 "--name", $foundryName,
-                "--location", $script:Location
+                "--reource-group", $script:ResourceGroupName,
+                "--location", $script:Location,
+                "--subscription", $script:SubscriptionId
             )
             if ($script:SubscriptionId) { $purgeCmd += @("--subscription", $script:SubscriptionId) }
             $purgeCmd += "--output"; $purgeCmd += "none"
