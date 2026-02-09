@@ -241,18 +241,57 @@ if ($deploymentExists) {
 }
 
 # ----------------------------------------------------------------------------
-# 8. Crear conexion del Hub a Azure OpenAI
+# 7.5. Asignar rol RBAC al Hub para acceso AAD a Azure OpenAI
+# ----------------------------------------------------------------------------
+Write-Step "Asignando permisos RBAC al Hub sobre Azure OpenAI..."
+
+# Obtener el principal ID (managed identity) del Hub
+$hubPrincipalId = az ml workspace show `
+    --name $script:HubName `
+    --resource-group $script:ResourceGroupName `
+    --query "identity.principal_id" -o tsv
+
+$aoaiResourceId = az cognitiveservices account show `
+    --name $aoaiName `
+    --resource-group $script:ResourceGroupName `
+    --query "id" -o tsv
+
+if ($hubPrincipalId) {
+    # Verificar si el rol ya esta asignado
+    $existingRole = az role assignment list `
+        --assignee $hubPrincipalId `
+        --scope $aoaiResourceId `
+        --role "Azure AI Developer" `
+        --query "[0].id" -o tsv 2>$null
+    
+    if ($existingRole) {
+        Write-Success "Rol RBAC ya asignado al Hub"
+    } else {
+        az role assignment create `
+            --assignee $hubPrincipalId `
+            --role "Azure AI Developer" `
+            --scope $aoaiResourceId `
+            --output none
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Rol 'Azure AI Developer' asignado al Hub"
+        } else {
+            Write-Warning "No se pudo asignar rol RBAC al Hub (puede requerir permisos de Owner)"
+        }
+    }
+} else {
+    Write-Warning "No se pudo obtener la managed identity del Hub"
+}
+
+# ----------------------------------------------------------------------------
+# 8. Crear conexion del Hub a Azure OpenAI (AAD + ResourceId)
 # ----------------------------------------------------------------------------
 Write-Step "Creando conexion del Hub a Azure OpenAI..."
 
 $connectionName = "aoai-connection"
 
-# Obtener el endpoint y la key del recurso Azure OpenAI
+# Obtener el endpoint del recurso Azure OpenAI
 $aoaiEndpoint = "https://$aoaiName.openai.azure.com/"
-$aoaiKey = az cognitiveservices account keys list `
-    --name $aoaiName `
-    --resource-group $script:ResourceGroupName `
-    --query "key1" -o tsv
 
 # Verificar si la conexion ya existe
 $connectionExists = az ml connection show `
@@ -264,12 +303,14 @@ $connectionExists = az ml connection show `
 if ($connectionExists) {
     Write-Success "Conexion '$connectionName' ya existe"
 } else {
-    # Crear archivo YAML para la conexion
+    # Crear archivo YAML para la conexion con AAD (sin API Key)
+    # NOTA: La CLI no soporta establecer ResourceId programáticamente.
+    #       Para ver los modelos en "Models + endpoints" del portal,
+    #       hacer upgrade manualmente desde AI Foundry Portal.
     $connectionYaml = @"
 name: $connectionName
 type: azure_open_ai
 azure_endpoint: $aoaiEndpoint
-api_key: $aoaiKey
 "@
     
     $yamlPath = "$env:TEMP\connection-aoai.yaml"
@@ -284,7 +325,8 @@ api_key: $aoaiKey
     Remove-Item -Path $yamlPath -Force -ErrorAction SilentlyContinue
     
     if ($LASTEXITCODE -eq 0) {
-        Write-Success "Conexion creada exitosamente"
+        Write-Success "Conexion creada (AAD)"
+        Write-Info "Para visibilidad en 'Models + endpoints', hacer upgrade desde el portal"
     } else {
         Write-Error "Error al crear la conexion"
         Write-Info "Puede crearse manualmente desde el portal de AI Foundry"

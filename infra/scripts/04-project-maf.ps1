@@ -40,6 +40,54 @@ if ($projectExists) {
 }
 
 # ----------------------------------------------------------------------------
+# 1.5. Asignar rol RBAC al Proyecto para acceso AAD a Azure OpenAI
+# ----------------------------------------------------------------------------
+Write-Step "Asignando permisos RBAC al proyecto sobre Azure OpenAI..."
+
+# Obtener el principal ID (managed identity) del proyecto
+$projectPrincipalId = az ml workspace show `
+    --name $projectName `
+    --resource-group $script:ResourceGroupName `
+    --query "identity.principal_id" -o tsv
+
+# Obtener el nombre del recurso Azure OpenAI (buscar el que existe en el RG)
+$aoaiName = az cognitiveservices account list `
+    --resource-group $script:ResourceGroupName `
+    --query "[?kind=='OpenAI'].name" -o tsv
+
+if ($projectPrincipalId -and $aoaiName) {
+    $aoaiResourceId = az cognitiveservices account show `
+        --name $aoaiName `
+        --resource-group $script:ResourceGroupName `
+        --query "id" -o tsv
+    
+    # Verificar si el rol ya esta asignado
+    $existingRole = az role assignment list `
+        --assignee $projectPrincipalId `
+        --scope $aoaiResourceId `
+        --role "Azure AI Developer" `
+        --query "[0].id" -o tsv 2>$null
+    
+    if ($existingRole) {
+        Write-Success "Rol RBAC ya asignado al proyecto"
+    } else {
+        az role assignment create `
+            --assignee $projectPrincipalId `
+            --role "Azure AI Developer" `
+            --scope $aoaiResourceId `
+            --output none
+        
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Rol 'Azure AI Developer' asignado al proyecto"
+        } else {
+            Write-Warning "No se pudo asignar rol RBAC (puede requerir permisos de Owner)"
+        }
+    }
+} else {
+    Write-Warning "No se pudo obtener la managed identity del proyecto o el recurso Azure OpenAI"
+}
+
+# ----------------------------------------------------------------------------
 # 2. Mostrar informacion del proyecto
 # ----------------------------------------------------------------------------
 Write-Host "`n$("-"*60)" -ForegroundColor Gray
