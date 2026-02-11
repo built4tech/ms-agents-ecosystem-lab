@@ -19,8 +19,9 @@ import asyncio
 import os
 from pathlib import Path
 
+from agent_framework import ChatMessage
 from agent_framework.azure import AzureOpenAIChatClient
-from azure.identity import DefaultAzureCredential
+from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 
@@ -33,23 +34,25 @@ def load_env() -> None:
 
 
 def validate_env_vars() -> tuple[str, str, str]:
-    """Valida y retorna las variables de entorno necesarias."""
+    """Valida y retorna endpoint, deployment y nombre del proyecto (opcional)."""
     endpoint = os.getenv("MAF_ENDPOINT_API")
     deployment = os.getenv("MAF_DEPLOYMENT_NAME")
+    project_name = os.getenv("MAF_PROJECT_NAME", "maf")
 
-    if not all([endpoint, deployment]):
+    if not endpoint or not deployment:
         raise ValueError(
             "Faltan variables en .env: MAF_ENDPOINT_API, MAF_DEPLOYMENT_NAME"
         )
 
-    return endpoint, deployment
+    return endpoint, project_name, deployment
 
 
-def get_project_client(endpoint: str) -> AzureOpenAIChatClient:
-    """Crea cliente de proyecto AI Foundry."""
+def get_project_client(endpoint: str, deployment: str) -> AzureOpenAIChatClient:
+    """Crea cliente de proyecto AI Foundry con despliegue por defecto."""
     return AzureOpenAIChatClient(
         endpoint=endpoint,
-        credential=DefaultAzureCredential(),
+        credential=AzureCliCredential(),
+        deployment_name=deployment,
     )
 
 
@@ -63,13 +66,13 @@ async def chat_loop(openai_client, deployment: str) -> None:
     print("=" * 60 + "\n")
 
     messages = [
-        {
-            "role": "system",
-            "content": (
+        ChatMessage(
+            role="system",
+            text=(
                 "Eres un asistente util y claro. Responde en espanol a menos "
                 "que el usuario escriba en otro idioma."
             ),
-        }
+        )
     ]
 
     while True:
@@ -87,17 +90,12 @@ async def chat_loop(openai_client, deployment: str) -> None:
                 print("\n[Sistema]: Historial limpiado. Nuevo chat iniciado.")
                 continue
 
-            messages.append({"role": "user", "content": user_input})
+            messages.append(ChatMessage(role="user", text=user_input))
 
-            response = openai_client.chat.completions.create(
-                model=deployment,
-                messages=messages,
-                temperature=0.7,
-                max_tokens=800,
-            )
+            response = await openai_client.get_response(messages)
 
-            assistant_message = response.choices[0].message.content
-            messages.append({"role": "assistant", "content": assistant_message})
+            assistant_message = response.text
+            messages.append(ChatMessage(role="assistant", text=assistant_message))
             print(f"\n[Asistente]: {assistant_message}")
         except KeyboardInterrupt:
             print("\n\nSesion interrumpida.")
@@ -117,10 +115,9 @@ def main() -> None:
     print(f"[INFO] Endpoint: {endpoint}")
     print(f"[INFO] Deployment: {deployment}\n")
 
-    project_client = get_project_client(endpoint)
-    openai_client = project_client.get_openai_client()
+    project_client = get_project_client(endpoint, deployment)
 
-    asyncio.run(chat_loop(openai_client, deployment))
+    asyncio.run(chat_loop(project_client, deployment))
 
 
 if __name__ == "__main__":

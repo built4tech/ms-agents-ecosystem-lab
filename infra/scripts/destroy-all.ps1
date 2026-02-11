@@ -66,10 +66,21 @@ function Invoke-FoundryCleanup {
 
             if ($foundryExists) {
                 Write-Info "  Eliminando cuenta activa..."
-                az cognitiveservices account delete `
-                    --name $foundryName `
-                    --resource-group $script:ResourceGroupName `
-                    --output none
+                try {
+                    az cognitiveservices account delete `
+                        --name $foundryName `
+                        --resource-group $script:ResourceGroupName `
+                        --output none
+                }
+                catch {
+                    $msg = $_.Exception.Message
+                    if ($msg -match "CannotDeleteResource" -and $msg -match "nested resources") {
+                        Write-Info "  No se pudo eliminar (tiene recursos hijos). Se continuará con la purga de soft-delete."
+                    }
+                    else {
+                        throw
+                    }
+                }
             }
         }
 
@@ -194,31 +205,49 @@ if ($env:FORCE_DESTROY -eq "1") { $waitForDeletion = "s" }
 if ($waitForDeletion -eq "s" -or $waitForDeletion -eq "S") {
     Write-Host ""
     Write-Info "Esperando a que se complete la eliminación..."
-    
+
+    $maxWaitSeconds = [int](${env:DESTROY_WAIT_SECONDS} | ForEach-Object { if ($_ -as [int]) { $_ } else { 1800 } })
+    $pollSeconds = 10
+    $elapsedSeconds = 0
+
     while ($true) {
         $rgStillExists = az group exists --name $script:ResourceGroupName
         if ($rgStillExists -eq "false") {
             break
         }
+
+        # Mostrar estado del RG si sigue existiendo
+        $state = az group show --name $script:ResourceGroupName --query "properties.provisioningState" -o tsv 2>$null
+        if ($state) { Write-Host -NoNewline "[$state]" }
         Write-Host "." -NoNewline
-        Start-Sleep -Seconds 10
+
+        Start-Sleep -Seconds $pollSeconds
+        $elapsedSeconds += $pollSeconds
+
+        if ($elapsedSeconds -ge $maxWaitSeconds) {
+            Write-Host ""
+            Write-Host "  Tiempo de espera agotado (${maxWaitSeconds}s). El RG sigue existiendo." -ForegroundColor Yellow
+            break
+        }
     }
-    
+
     $endTime = Get-Date
     $duration = $endTime - $startTime
 
-    Write-Host ""
-    Write-Step "Verificando y purgando recursos Foundry en soft-delete tras eliminar el RG..."
-    Invoke-FoundryPurgeLoop -Names $foundryNames -Retries 6 -DelaySeconds 10
-    
-    Write-Host ""
-    Write-Host ""
-    Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
-    Write-Host "║                                                              ║" -ForegroundColor Green
-    Write-Host "║            INFRAESTRUCTURA ELIMINADA EXITOSAMENTE            ║" -ForegroundColor Green
-    Write-Host "║                                                              ║" -ForegroundColor Green
-    Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
-    Write-Host ""
-    Write-Host "  Tiempo total: $($duration.Minutes) minutos y $($duration.Seconds) segundos" -ForegroundColor Gray
-    Write-Host ""
+    if ($rgStillExists -eq "false") {
+        Write-Host ""
+        Write-Step "Verificando y purgando recursos Foundry en soft-delete tras eliminar el RG..."
+        Invoke-FoundryPurgeLoop -Names $foundryNames -Retries 6 -DelaySeconds 10
+
+        Write-Host ""
+        Write-Host ""
+        Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Green
+        Write-Host "║                                                              ║" -ForegroundColor Green
+        Write-Host "║            INFRAESTRUCTURA ELIMINADA EXITOSAMENTE            ║" -ForegroundColor Green
+        Write-Host "║                                                              ║" -ForegroundColor Green
+        Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Green
+        Write-Host ""
+        Write-Host "  Tiempo total: $($duration.Minutes) minutos y $($duration.Seconds) segundos" -ForegroundColor Gray
+        Write-Host ""
+    }
 }
