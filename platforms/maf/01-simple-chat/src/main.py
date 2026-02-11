@@ -19,7 +19,7 @@ import asyncio
 import os
 from pathlib import Path
 
-from azure.ai.projects import AIProjectClient
+from agent_framework.azure import AzureOpenAIChatClient
 from azure.identity import DefaultAzureCredential
 from dotenv import load_dotenv
 
@@ -34,21 +34,20 @@ def load_env() -> None:
 
 def validate_env_vars() -> tuple[str, str, str]:
     """Valida y retorna las variables de entorno necesarias."""
-    endpoint = os.getenv("MAF_ENDPOINT")
-    project_name = os.getenv("MAF_PROJECT_NAME")
+    endpoint = os.getenv("MAF_ENDPOINT_API")
     deployment = os.getenv("MAF_DEPLOYMENT_NAME")
 
-    if not all([endpoint, project_name, deployment]):
+    if not all([endpoint, deployment]):
         raise ValueError(
-            "Faltan variables en .env: MAF_ENDPOINT, MAF_PROJECT_NAME, MAF_DEPLOYMENT_NAME"
+            "Faltan variables en .env: MAF_ENDPOINT_API, MAF_DEPLOYMENT_NAME"
         )
 
-    return endpoint, project_name, deployment
+    return endpoint, deployment
 
 
-def get_project_client(endpoint: str) -> AIProjectClient:
+def get_project_client(endpoint: str) -> AzureOpenAIChatClient:
     """Crea cliente de proyecto AI Foundry."""
-    return AIProjectClient(
+    return AzureOpenAIChatClient(
         endpoint=endpoint,
         credential=DefaultAzureCredential(),
     )
@@ -114,7 +113,7 @@ def main() -> None:
     load_env()
     endpoint, project_name, deployment = validate_env_vars()
 
-    print(f"\n[INFO] Conectando a Hub: {project_name}")
+    print(f"\n[INFO] Conectando a Proyecto: {project_name}")
     print(f"[INFO] Endpoint: {endpoint}")
     print(f"[INFO] Deployment: {deployment}\n")
 
