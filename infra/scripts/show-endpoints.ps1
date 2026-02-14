@@ -38,7 +38,6 @@ Write-Host ""
 Write-Endpoint "Subscription ID" $subscriptionId
 Write-Endpoint "Resource Group" $script:ResourceGroupName
 Write-Endpoint "Location" $script:Location
-Write-Endpoint "Recurso Foundry (AIServices)" "ver por proyecto"
 
 # ----------------------------------------------------------------------------
 # Generar contenido del archivo .env
@@ -59,52 +58,46 @@ AZURE_LOCATION=$($script:Location)
 
 # El nombre de deployment coincide con el modelo en los scripts actuales
 $deploymentName = $script:ModelName
+$foundryName = $script:FoundryName
+$projectName = "$foundryName-project"
 
-# ----------------------------------------------------------------------------
-# Procesar cada proyecto
-# ----------------------------------------------------------------------------
+Write-Host ""
+Write-Host "┌──────────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
+Write-Host "│ MAF                                                        │" -ForegroundColor Yellow
+Write-Host "└──────────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
+Write-Host ""
 
-foreach ($project in $script:Projects.GetEnumerator()) {
-    $framework = $project.Key
-    $foundryName = $project.Value.FoundryName
-    $prefix = $framework.ToUpper()
-    
-    Write-Host ""
-    Write-Host "┌──────────────────────────────────────────────────────────────┐" -ForegroundColor Yellow
-    Write-Host "│ $($framework.ToUpper().PadRight(60)) │" -ForegroundColor Yellow
-    Write-Host "└──────────────────────────────────────────────────────────────┘" -ForegroundColor Yellow
-    Write-Host ""
-    
-    # Verificar si el recurso Foundry existe
-    $foundryExists = az cognitiveservices account show `
-        --name $foundryName `
-        --resource-group $script:ResourceGroupName `
-        --output json 2>$null
-    
-    if (-not $foundryExists) {
-        Write-Host "  ⚠️  Recurso Foundry no encontrado" -ForegroundColor Red
-        continue
-    }
-    
-    Write-Endpoint "Foundry Name" $foundryName
-    Write-Endpoint "Deployment" $deploymentName
-    
-    $endpointOpenAI = "https://$foundryName.openai.azure.com"
-    $endpointApi = "https://$foundryName.services.ai.azure.com"
-    Write-Endpoint "Endpoint (OpenAI)" $endpointOpenAI
-    Write-Endpoint "Endpoint (API)" $endpointApi
-    
-    Write-Host ""
-    Write-Host "  Nota: Usa credenciales AAD (DefaultAzureCredential)" -ForegroundColor Gray
-    
-    $envContent += @"
-# $framework (recurso Foundry AIServices)
-${prefix}_ENDPOINT_OPENAI=$endpointOpenAI
-${prefix}_ENDPOINT_API=$endpointApi
-${prefix}_DEPLOYMENT_NAME=$deploymentName
+# Verificar si el recurso Foundry existe
+$foundryExists = az cognitiveservices account show `
+    --name $foundryName `
+    --resource-group $script:ResourceGroupName `
+    --output json 2>$null
+
+if (-not $foundryExists) {
+    Write-Host "  ⚠️  Recurso Foundry no encontrado" -ForegroundColor Red
+    exit 1
+}
+
+Write-Endpoint "Foundry Name" $foundryName
+Write-Endpoint "Deployment" $deploymentName
+
+$endpointOpenAI = "https://$foundryName.openai.azure.com"
+$endpointApi = "https://$foundryName.services.ai.azure.com"
+Write-Endpoint "Endpoint (OpenAI)" $endpointOpenAI
+Write-Endpoint "Endpoint (API)" $endpointApi
+
+Write-Host ""
+Write-Host "  Nota: Usa credenciales AAD (DefaultAzureCredential)" -ForegroundColor Gray
+
+$envContent += @"
+# Servicio de chat
+ENDPOINT_API=$endpointApi
+ENDPOINT_OPENAI=$endpointOpenAI
+DEPLOYMENT_NAME=$deploymentName
+PROJECT_NAME=$projectName
+API_VERSION=2024-10-21
 
 "@
-}
 
 # ----------------------------------------------------------------------------
 # Mostrar preview del archivo .env

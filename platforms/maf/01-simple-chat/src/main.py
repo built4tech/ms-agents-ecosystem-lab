@@ -19,13 +19,18 @@ import asyncio
 import os
 from pathlib import Path
 
-from agent_framework import ChatMessage
+from agent_framework import AgentThread, ChatAgent
 from agent_framework.azure import AzureOpenAIChatClient
 from azure.identity import AzureCliCredential
 from dotenv import load_dotenv
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[4]
+AGENT_PROMPT = (
+    "Eres un agente conversacional claro y conciso."
+    " Responde en espanol a menos que el usuario use otro idioma"
+    " y prioriza respuestas breves y accionables."
+)
 
 
 def load_env() -> None:
@@ -33,30 +38,60 @@ def load_env() -> None:
     load_dotenv(PROJECT_ROOT / ".env")
 
 
-def validate_env_vars() -> tuple[str, str, str]:
-    """Valida y retorna endpoint, deployment y nombre del proyecto (opcional)."""
-    endpoint = os.getenv("MAF_ENDPOINT_API")
-    deployment = os.getenv("MAF_DEPLOYMENT_NAME")
-    project_name = os.getenv("MAF_PROJECT_NAME", "maf")
+def validate_env_vars() -> dict[str, str | None]:
+    """Valida variables requeridas y opcionales para Azure OpenAI."""
+    endpoint = os.getenv("ENDPOINT_API")
+    deployment = os.getenv("DEPLOYMENT_NAME")
+    project_name = os.getenv("PROJECT_NAME")
+    api_version = os.getenv("API_VERSION")
+    api_key = os.getenv("API_KEY")
 
-    if not endpoint or not deployment:
-        raise ValueError(
-            "Faltan variables en .env: MAF_ENDPOINT_API, MAF_DEPLOYMENT_NAME"
-        )
+    missing = [
+        name
+        for name, val in {
+            "ENDPOINT_API": endpoint,
+            "DEPLOYMENT_NAME": deployment,
+            "PROJECT_NAME": project_name,
+            "API_VERSION": api_version,
+        }.items()
+        if not val
+    ]
+    if missing:
+        raise ValueError(f"Faltan variables en .env: {', '.join(missing)}")
 
-    return endpoint, project_name, deployment
+    return {
+        "endpoint": endpoint,
+        "deployment": deployment,
+        "project_name": project_name,
+        "api_version": api_version,
+        "api_key": api_key,
+    }
 
 
-def get_project_client(endpoint: str, deployment: str) -> AzureOpenAIChatClient:
-    """Crea cliente de proyecto AI Foundry con despliegue por defecto."""
+def create_chat_client(config: dict[str, str | None]) -> AzureOpenAIChatClient:
+    """Crea el cliente de chat usando API key (si existe) o Azure CLI."""
+    auth_kwargs: dict[str, object]
+    if config["api_key"]:
+        auth_kwargs = {"api_key": config["api_key"]}
+        print("[INFO] Autenticacion: API key")
+    else:
+        auth_kwargs = {"credential": AzureCliCredential()}
+        print("[INFO] Autenticacion: Azure CLI")
+
     return AzureOpenAIChatClient(
-        endpoint=endpoint,
-        credential=AzureCliCredential(),
-        deployment_name=deployment,
+        endpoint=config["endpoint"],
+        deployment_name=config["deployment"],
+        api_version=config["api_version"],
+        **auth_kwargs,
     )
 
 
-async def chat_loop(openai_client, deployment: str) -> None:
+def create_agent(chat_client: AzureOpenAIChatClient) -> ChatAgent:
+    """Crea el agente de MAF con instrucciones base."""
+    return ChatAgent(chat_client=chat_client, instructions=AGENT_PROMPT, tools=[])
+
+
+async def chat_loop(agent: ChatAgent) -> None:
     """Bucle principal de chat interactivo."""
     print("\n" + "=" * 60)
     print(" CHAT INTERACTIVO - Microsoft Agent Framework")
@@ -65,15 +100,7 @@ async def chat_loop(openai_client, deployment: str) -> None:
     print(" Escribe 'clear' o 'limpiar' para limpiar el historial")
     print("=" * 60 + "\n")
 
-    messages = [
-        ChatMessage(
-            role="system",
-            text=(
-                "Eres un asistente util y claro. Responde en espanol a menos "
-                "que el usuario escriba en otro idioma."
-            ),
-        )
-    ]
+    thread = AgentThread()
 
     while True:
         try:
@@ -86,38 +113,36 @@ async def chat_loop(openai_client, deployment: str) -> None:
                 break
 
             if user_input.lower() in ["clear", "limpiar"]:
-                messages[:] = messages[:1]
+                thread = AgentThread()
                 print("\n[Sistema]: Historial limpiado. Nuevo chat iniciado.")
                 continue
 
-            messages.append(ChatMessage(role="user", text=user_input))
-
-            response = await openai_client.get_response(messages)
-
-            assistant_message = response.text
-            messages.append(ChatMessage(role="assistant", text=assistant_message))
-            print(f"\n[Asistente]: {assistant_message}")
+            response = await agent.run(user_input, thread=thread)
+            print(f"\n[Asistente]: {response.text}")
         except KeyboardInterrupt:
             print("\n\nSesion interrumpida.")
             break
         except Exception as exc:
             print(f"\n[Error]: {exc}")
-            if messages and messages[-1].get("role") == "user":
-                messages.pop()
 
 
 def main() -> None:
     """Funcion principal."""
     load_env()
-    endpoint, project_name, deployment = validate_env_vars()
+
+    config = validate_env_vars()
+    endpoint = config["endpoint"]
+    project_name = config["project_name"]
+    deployment = config["deployment"]
 
     print(f"\n[INFO] Conectando a Proyecto: {project_name}")
     print(f"[INFO] Endpoint: {endpoint}")
     print(f"[INFO] Deployment: {deployment}\n")
 
-    project_client = get_project_client(endpoint, deployment)
+    chat_client = create_chat_client(config)
+    agent = create_agent(chat_client)
 
-    asyncio.run(chat_loop(project_client, deployment))
+    asyncio.run(chat_loop(agent))
 
 
 if __name__ == "__main__":

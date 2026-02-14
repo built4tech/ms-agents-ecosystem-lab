@@ -15,11 +15,11 @@ Write-Host "╚═════════════════════�
 Write-Host ""
 
 # Mostrar qué se va a eliminar
-Write-Host "  Se eliminarán los siguientes recursos:" -ForegroundColor Yellow
+Write-Host "  Se eliminaran los siguientes recursos:" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "  Resource Group: $($script:ResourceGroupName)" -ForegroundColor White
-Write-Host "    └── Foundry (AIServices) y deployments" -ForegroundColor Gray
-Write-Host "        └── Proyectos para agentes (projects)" -ForegroundColor Gray
+Write-Host "    └── Foundry MAF (AIServices) y su deployment" -ForegroundColor Gray
+Write-Host "        └── Proyecto de agentes asociado" -ForegroundColor Gray
 Write-Host ""
 
 # Confirmar eliminación
@@ -37,9 +37,7 @@ if ($confirmation -ne "ELIMINAR") {
 }
 
 $foundryNames = @()
-foreach ($proj in $script:Projects.GetEnumerator()) {
-    if ($proj.Value.FoundryName) { $foundryNames += $proj.Value.FoundryName }
-}
+if ($script:FoundryName) { $foundryNames += $script:FoundryName }
 
 # Establecer subscription si se especificó
 if ($script:SubscriptionId) {

@@ -1,5 +1,5 @@
 # ============================================================================
-# Configuración centralizada del laboratorio - 3 recursos Foundry (AIServices)
+# Configuración centralizada del laboratorio - Foundry MAF (AIServices)
 # ============================================================================
 # INSTRUCCIONES:
 # 1. Copia este archivo a 'lab-config.ps1' en la misma carpeta
@@ -16,24 +16,14 @@ $script:Location = "eastus2"
 # Resource Group
 $script:ResourceGroupName = "rg-agents-lab"
 
-# Modelo a desplegar en todos los recursos Foundry
+# Modelo a desplegar en el recurso Foundry
 $script:ModelName = "gpt-4o-mini"
 $script:ModelVersion = "2024-07-18"
 $script:ModelSku = "GlobalStandard"
 $script:ModelCapacity = 10  # TPM en miles (10 = 10K tokens por minuto)
 
-# Configuración de los 3 recursos Foundry separados
-$script:Projects = @{
-    "LangChain" = @{
-        FoundryName       = "foundry-langchain-lab"
-    }
-    "MAF" = @{
-        FoundryName       = "foundry-maf-lab"
-    }
-    "CrewAI" = @{
-        FoundryName       = "foundry-crewai-lab"
-    }
-}
+# Recurso Foundry para MAF
+$script:FoundryName = "foundry-maf-lab"
 
 # Tags para recursos
 $script:Tags = @{

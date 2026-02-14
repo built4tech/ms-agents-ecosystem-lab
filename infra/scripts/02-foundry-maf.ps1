@@ -1,13 +1,13 @@
 # ============================================================================
-# 02-foundry-langchain.ps1 - Crear recurso Foundry (AIServices) + despliegue gpt-4o-mini
+# 02-foundry-maf.ps1 - Crear recurso Foundry (AIServices) + despliegue gpt-4o-mini
 # ============================================================================
 
 $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
 
-$framework = "LangChain"
-$hubConfig = $script:Projects[$framework]
+$framework = "MAF"
+$foundryName = $script:FoundryName
 
 Write-Host "`n$("="*60)" -ForegroundColor Cyan
 Write-Host " Proyecto $framework - CREACIÓN" -ForegroundColor Cyan
@@ -27,7 +27,6 @@ $account = az account show --output json | ConvertFrom-Json
 # ============================================================================
 # 1. Recurso Foundry (AIServices)
 # ============================================================================
-$foundryName = $hubConfig.FoundryName
 $accountBaseUrl = "https://management.azure.com/subscriptions/$($account.id)/resourceGroups/$($script:ResourceGroupName)/providers/Microsoft.CognitiveServices/accounts/$foundryName"
 
 Write-Step "Creando recurso Foundry (AIServices) '$foundryName'..."
