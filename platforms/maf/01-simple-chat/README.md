@@ -107,6 +107,18 @@ Esto establece tu contexto de autenticación para Foundry en entorno local.
 python main.py
 ```
 
+### Ejecución endpoint M365 (Fase 2)
+
+```bash
+# Desde platforms/maf/01-simple-chat/
+python main_m365.py
+```
+
+Endpoint disponible:
+
+- `POST http://localhost:3978/api/messages`
+- `GET http://localhost:3978/api/messages` (health check, devuelve 200)
+
 ### Ejemplo de Sesión
 
 ```
@@ -233,6 +245,7 @@ sequenceDiagram
 ```
 platforms/maf/01-simple-chat/
 ├── main.py                # Punto de entrada
+├── main_m365.py           # Punto de entrada endpoint M365 (/api/messages)
 ├── requirements-m365.txt # Dependencias para canal Microsoft 365
 ├── requirements-agent365-preview.txt # Dependencias Agent 365 (Frontier preview)
 ├── README.md             # Este archivo
@@ -247,7 +260,9 @@ platforms/maf/01-simple-chat/
 │   │
 │   ├── channels/         # Adaptadores por canal
 │   │   ├── __init__.py
-│   │   └── cli_runner.py # Runner del canal CLI
+│   │   ├── cli_runner.py # Runner del canal CLI
+│   │   ├── m365_app.py   # Handlers de actividad para canal M365
+│   │   └── start_server.py # Bootstrap aiohttp para /api/messages
 │   │
 │   └── ui/               # Interfaz usuario
 │       ├── __init__.py

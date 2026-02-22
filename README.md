@@ -3,9 +3,20 @@
 
 Laboratorio centrado en **Microsoft Agent Framework (MAF)** sobre Azure AI Foundry.
 
+## Documentación clave (M365 runtime)
+
+Para seguir la evolución del agente hacia Microsoft 365/Copilot, utiliza esta secuencia:
+
+1. Plan por fases y decisiones: [docs/PLAN-M365-AGENT365.md](docs/PLAN-M365-AGENT365.md)
+    - Define el roadmap incremental, criterios por fase y decisiones de arquitectura/autenticación.
+2. Guía de flujo técnico runtime: [docs/GUIA-FLUJO-RUNTIME-M365.md](docs/GUIA-FLUJO-RUNTIME-M365.md)
+    - Explica en detalle cómo funciona `main_m365.py`, el endpoint `/api/messages`, estructura de Activity y handlers.
+3. Runbook operativo pre-Fase 3: [docs/RUNBOOK-PREFASE3-M365.md](docs/RUNBOOK-PREFASE3-M365.md)
+    - Checklist Go/No-Go ejecutable (CLI + endpoint + Playground + casos negativos).
+
 ## Objetivos
 1. Probar rápidamente un entorno MAF completo en Azure AI Foundry.
-2. Ejecutar ejemplos incrementales (simple chat, graph, orquestado) sobre un único recurso Foundry.
+2. Ejecutar ejemplos incrementales (simple chat y extensiones de canal M365) sobre un único recurso Foundry.
 3. Mantener scripts de infraestructura mínimos y reproducibles.
 
 ## Estructura del proyecto
@@ -15,8 +26,8 @@ ms-agents-ecosystem-lab/
 ├── platforms/
 │   └── maf/
 │       ├── 01-simple-chat/
-│       ├── 02-graph-agent/
-│       └── 03-orchestrated/
+│       ├── 02-tools_mcp/
+│       └── 03-observabilidad/
 ├── infra/
 │   ├── config/
 │   │   └── lab-config.ps1
@@ -28,7 +39,10 @@ ms-agents-ecosystem-lab/
 │       ├── destroy-all.ps1
 │       └── show-endpoints.ps1
 ├── docs/
-│   └── azure-cli-auth.md
+│   ├── azure-cli-auth.md
+│   ├── PLAN-M365-AGENT365.md
+│   ├── GUIA-FLUJO-RUNTIME-M365.md
+│   └── RUNBOOK-PREFASE3-M365.md
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -40,6 +54,44 @@ ms-agents-ecosystem-lab/
 - Azure CLI instalada (no requiere extensión ML)
 - Python 3.10+
 - Rol Contributor en la subscription de Azure
+
+### 1.1 Requisito opcional (altamente recomendado): Node.js + npm
+
+Es altamente recomendable instalar `npm` para poder usar **Microsoft 365 Agents Playground** en pruebas locales del endpoint `/api/messages`.
+
+Instalación sugerida en Windows:
+
+```powershell
+winget install --id OpenJS.NodeJS.LTS -e --accept-package-agreements --accept-source-agreements
+```
+
+Luego abre una terminal nueva y verifica:
+
+```powershell
+node --version
+npm --version
+```
+
+### 1.2 Requisito opcional (altamente recomendado): Playground local
+
+Instala Microsoft 365 Agents Playground:
+
+```powershell
+npm install -g @microsoft/teams-app-test-tool
+```
+
+Invocación de la herramienta:
+
+```powershell
+teamsapptester
+```
+
+Uso recomendado:
+
+- Arranca el servidor del agente (`main_m365.py`).
+- Conecta Playground contra `http://127.0.0.1:3978/api/messages`.
+- Ejecuta casos `/help`, `/clear`, mensaje normal y casos negativos.
+- Referencia operativa completa: [docs/RUNBOOK-PREFASE3-M365.md](docs/RUNBOOK-PREFASE3-M365.md)
 
 ### 2. Autenticación
 ```powershell
@@ -79,8 +131,20 @@ pip install -r requirements.txt
 ### 7. Ejecutar un ejemplo
 ```powershell
 cd platforms/maf/01-simple-chat
-python src/main.py
+python main.py
 ```
+
+### 8. Ejecutar endpoint M365 (runtime)
+
+```powershell
+cd platforms/maf/01-simple-chat
+python main_m365.py
+```
+
+Endpoint local:
+
+- `GET http://localhost:3978/api/messages` (health-check)
+- `POST http://localhost:3978/api/messages` (Activity protocol)
 
 ## Arquitectura en Azure
 
@@ -97,3 +161,9 @@ cd infra/scripts
 .\destroy-all.ps1
 ```
 Confirma escribiendo `ELIMINAR` cuando se solicite para evitar costes innecesarios.
+
+## Lectura recomendada para avanzar a Fase 3
+
+1. [docs/PLAN-M365-AGENT365.md](docs/PLAN-M365-AGENT365.md)
+2. [docs/GUIA-FLUJO-RUNTIME-M365.md](docs/GUIA-FLUJO-RUNTIME-M365.md)
+3. [docs/RUNBOOK-PREFASE3-M365.md](docs/RUNBOOK-PREFASE3-M365.md)

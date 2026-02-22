@@ -1,5 +1,13 @@
 # Plan por fases: evolución de `01-simple-chat` a Microsoft 365 Copilot + Agent 365
 
+## Ruta de lectura (lineal)
+
+1. Este plan (`PLAN-M365-AGENT365.md`) para entender objetivos, fases y criterios.
+2. Guía de ejecución runtime del canal M365: [GUIA-FLUJO-RUNTIME-M365.md](GUIA-FLUJO-RUNTIME-M365.md)
+3. Ejecución operativa Go/No-Go antes de Fase 3: [RUNBOOK-PREFASE3-M365.md](RUNBOOK-PREFASE3-M365.md)
+
+Esta secuencia permite pasar de la estrategia de implementación a la operación técnica paso a paso.
+
 ## Contexto actual
 
 La app actual (`main.py` + `app/core/agent.py` + `app/ui/cli.py`) funciona como chat CLI local sobre Azure AI Foundry usando MAF.
