@@ -9,19 +9,23 @@ Este proyecto demuestra cómo construir un chatbot simple usando el framework MA
 - **Se conecta a Azure AI Services** mediante endpoints configurables
 - **Usa Azure OpenAI** para generar respuestas basadas en IA
 - **Mantiene contexto conversacional** a través de hilos de agente (`AgentThread`)
-- **Soporta autenticación flexible**: API Key o Azure CLI (`az login`)
+- **Usa autenticación Entra ID** mediante Azure CLI (`az login`) en local
 - **Registra eventos** de manera estructurada para debugging y auditoría
 
 ## 🏗️ Arquitectura
 
 ```
 app/
-├── core/                      # Lógica de negocio
+├── core/                      # Núcleo de negocio
 │   ├── interfaces.py         # Contrato AgentInterface
-│   └── agent.py              # Implementación SimpleChatAgent
+│   ├── agent.py              # Implementación SimpleChatAgent
+│   └── chat_service.py       # Servicio de aplicación (ciclo de vida y consulta)
+│
+├── channels/                  # Adaptadores por canal
+│   └── cli_runner.py         # Runner del canal de terminal
 │
 └── ui/                        # Interfaz de usuario
-    └── cli.py                # Chat interactivo en terminal
+    └── cli.py                # Wrapper de compatibilidad para la CLI
 
 main.py                        # Punto de entrada
 ```
@@ -32,7 +36,9 @@ main.py                        # Punto de entrada
 |--------|-----------|
 | `app.core.interfaces` | Define `AgentInterface` - contrato para todos los agentes |
 | `app.core.agent` | Implementa `SimpleChatAgent` - agente conversacional |
-| `app.ui.cli` | Proporciona `run_interactive_chat()` - interfaz terminal |
+| `app.core.chat_service` | Encapsula ciclo de vida del agente y método `ask()` |
+| `app.channels.cli_runner` | Implementa la ejecución del canal de terminal |
+| `app.ui.cli` | Expone `run_interactive_chat()` como wrapper compatible |
 | `main.py` | Punto de entrada único de la aplicación |
 
 ## 📦 Requisitos
@@ -40,7 +46,9 @@ main.py                        # Punto de entrada
 - **Python 3.11+**
 - **Virtual Environment** (recomendado)
 - **Azure CLI** (para autenticación con `az login`)
-- **Dependencias** listadas en `requirements.txt` (nivel raíz)
+- **Dependencias base** listadas en `requirements.txt` (nivel raíz)
+- **Dependencias M365** en `requirements-m365.txt` (este módulo)
+- **Dependencias Agent 365 (Frontier)** en `requirements-agent365-preview.txt` (este módulo)
 
 ## 🚀 Instalación
 
@@ -64,7 +72,7 @@ Copia `.env.example` a `.env` en la **raíz del repositorio**:
 
 ```bash
 # Desde la raíz del repo (ms-agents-ecosystem-lab/)
-copy platforms/maf/01-simple-chat/.env.example .env
+copy .env.example .env
 ```
 
 Luego edita `.env` con tus valores:
@@ -74,7 +82,6 @@ ENDPOINT_API=https://foundry-maf-lab.services.ai.azure.com
 DEPLOYMENT_NAME=gpt-4o-mini
 PROJECT_NAME=maf
 API_VERSION=2024-10-21
-API_KEY=tu-api-key-aqui-opcional
 ```
 
 **Orígenes de la configuración:**
@@ -91,6 +98,7 @@ az login
 ```
 
 Esto establece tu contexto de autenticación. Si defines `API_KEY` en `.env`, se usará en su lugar.
+Esto establece tu contexto de autenticación para Foundry en entorno local.
 
 ## ▶️ Ejecución
 
@@ -225,7 +233,8 @@ sequenceDiagram
 ```
 platforms/maf/01-simple-chat/
 ├── main.py                # Punto de entrada
-├── .env.example          # Plantilla variables entorno
+├── requirements-m365.txt # Dependencias para canal Microsoft 365
+├── requirements-agent365-preview.txt # Dependencias Agent 365 (Frontier preview)
 ├── README.md             # Este archivo
 │
 ├── app/                  # Código fuente
@@ -234,10 +243,15 @@ platforms/maf/01-simple-chat/
 │   │   ├── __init__.py
 │   │   ├── interfaces.py # Contrato Agent
 │   │   └── agent.py      # SimpleChatAgent
+│   │   └── chat_service.py # Servicio de aplicación para chat
+│   │
+│   ├── channels/         # Adaptadores por canal
+│   │   ├── __init__.py
+│   │   └── cli_runner.py # Runner del canal CLI
 │   │
 │   └── ui/               # Interfaz usuario
 │       ├── __init__.py
-│       └── cli.py        # Chat terminal
+│       └── cli.py        # Wrapper de compatibilidad CLI
 │
 └── tests/                # Suite de tests
     ├── __init__.py
@@ -245,6 +259,9 @@ platforms/maf/01-simple-chat/
     │   └── __init__.py
     └── integration/      # Tests de integración
         └── __init__.py
+
+/.env.example             # Plantilla de variables de entorno (nivel raíz)
+/.env                     # Variables reales de ejecución (nivel raíz, no versionado)
 ```
 
 ## 🐛 Troubleshooting

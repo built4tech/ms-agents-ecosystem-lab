@@ -1,0 +1,3 @@
+microsoft-agents-a365-runtime
+microsoft-agents-a365-notifications
+microsoft-agents-a365-observability-core

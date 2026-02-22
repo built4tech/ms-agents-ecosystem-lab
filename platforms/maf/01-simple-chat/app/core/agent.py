@@ -54,26 +54,19 @@ class SimpleChatAgent(AgentInterface):
         """Crea un cliente de chat que posteriormente vincularemos con el agente."""
         
         # Obtención de las variables de entorno necesarias para configurar el cliente de chat
-        logger.debug("Obteniendo variables de entorno: ENDPOINT_API, DEPLOYMENT_NAME, API_VERSION, API_KEY")
+        logger.debug("Obteniendo variables de entorno: ENDPOINT_API, DEPLOYMENT_NAME, API_VERSION")
         endpoint     = os.getenv("ENDPOINT_API")
         deployment   = os.getenv("DEPLOYMENT_NAME")
-        project_name = os.getenv("PROJECT_NAME")
         api_version  = os.getenv("API_VERSION")
-        api_key      = os.getenv("API_KEY")
 
         # Comprobación de que todas las variables necesarias están presentes, si falta alguna se lanza una excepción
         if not all([endpoint, deployment, api_version]):
             logger.error("Faltan variables obligatorias: ENDPOINT_API, DEPLOYMENT_NAME o API_VERSION")
             raise ValueError("Falta alguna de las variables de entorno necesarias: ENDPOINT_API, DEPLOYMENT_NAME, API_VERSION")
         
-        # Configuración de la autenticación para el cliente de chat, se prioriza el uso de API key si está presente
-        # en caso contrario utlizamos Azure CLI para autenticarnos
-        if api_key:
-            credential = AzureCliCredential(api_key)
-            logger.debug("API_KEY encontrada, usando autenticación con clave.")
-        else:
-            credential = AzureCliCredential()
-            logger.debug("API_KEY no definida, usando Azure CLI.")
+        # Autenticación Entra ID-only mediante sesión de Azure CLI.
+        credential = AzureCliCredential()
+        logger.debug("Usando autenticación Entra ID con AzureCliCredential.")
         
         # Creación del cliente de chat utilizando las variables de entorno y la autenticación configurada
         self.chat_client = AzureOpenAIChatClient(
