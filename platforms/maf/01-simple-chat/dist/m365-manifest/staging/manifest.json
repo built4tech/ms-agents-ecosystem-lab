@@ -1,0 +1,61 @@
+{
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.17",
+  "version": "1.0.0",
+  "id": "ebba9b63-13be-4f63-bc19-5c2cc43b0aa8",
+  "packageName": "com.msagents.ecosystemlab.agentidentityviewer",
+  "developer": {
+    "name": "Carlos Munoz",
+    "websiteUrl": "https://aka.ms",
+    "privacyUrl": "https://privacy.microsoft.com/privacystatement",
+    "termsOfUseUrl": "https://www.microsoft.com/servicesagreement",
+    "mpnId": "carlosmu@microsoft.com"
+  },
+  "name": {
+    "short": "Agent Identity Viewer",
+    "full": "Agent Identity Observability Bot"
+  },
+  "description": {
+    "short": "Explore and monitor agent identities.",
+    "full": "A conversational bot to explore, monitor, and understand Entra agent identities."
+  },
+  "icons": {
+    "outline": "outline.png",
+    "color": "color.png"
+  },
+  "accentColor": "#5B5FC7",
+  "bots": [
+    {
+      "botId": "ebba9b63-13be-4f63-bc19-5c2cc43b0aa8",
+      "scopes": [
+        "personal"
+      ],
+      "supportsFiles": false,
+      "isNotificationOnly": false,
+      "commandLists": [
+        {
+          "scopes": [
+            "personal"
+          ],
+          "commands": [
+            {
+              "title": "/help",
+              "description": "Show bot help"
+            },
+            {
+              "title": "/clear",
+              "description": "Clear conversation context"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "permissions": [
+    "identity",
+    "messageTeamMembers"
+  ],
+  "validDomains": [
+    "localhost"
+  ]
+}

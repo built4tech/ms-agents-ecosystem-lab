@@ -28,7 +28,9 @@ Interpretación operativa: se cerró la transición **Fase 2 → Fase 3** tras v
 2. Configurar secretos/credenciales en entorno:
   - **Completado en local/dev** (`MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_APP_TENANTID`, adapter con `MsalConnectionManager`).
 3. Generar/adaptar manifest M365 Copilot y empaquetar `.zip`:
-  - **Pendiente**.
+  - **Completado (2026-02-24)**.
+  - Evidencia: `platforms/maf/01-simple-chat/dist/m365-manifest/simple-chat-agent-m365-manifest.zip`
+  - Método: `platforms/maf/01-simple-chat/devTools/build-m365-manifest.ps1`
 4. Desplegar endpoint público (App Service/Container Apps u otro):
   - **Pendiente**.
 
@@ -60,14 +62,13 @@ Regla de continuidad: **no avanzar de fase** hasta completar 3 y 4.
 
 ## Riesgos abiertos relevantes
 
-- Objetivo 3 pendiente (manifest Copilot `.zip`) bloquea cierre de Fase 3.
 - Objetivo 4 pendiente (endpoint público publicado) bloquea cierre de Fase 3.
 - Dependencia de consistencia de credenciales/tenant según entorno activo de `az login`.
 
 ## Próximo paso único recomendado
 
-Completar objetivo 3 de [Fase 3](01-PLAN-M365-AGENT365.md):
-- generar/adaptar manifest M365 Copilot y empaquetar `.zip` para validación.
+Completar objetivo 4 de [Fase 3](01-PLAN-M365-AGENT365.md):
+- desplegar endpoint público (App Service/Container Apps u otro hosting) y conectar canal.
 
 **Definition of Done para cerrar Fase 3:**
 - Objetivo 3 completado: manifest Copilot válido y empaquetado.
