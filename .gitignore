@@ -29,3 +29,14 @@ ehthumbs.db
 Thumbs.db
 
 
+# Build/debug artifacts under dist (keep only source tooling/assets)
+dist/**
+!dist/dev/
+!dist/dev/build-m365-manifest.ps1
+!dist/dev/manifest.template.json
+!dist/m365-manifest/
+!dist/m365-manifest/staging/
+!dist/m365-manifest/staging/color.png
+!dist/m365-manifest/staging/outline.png
+
+
