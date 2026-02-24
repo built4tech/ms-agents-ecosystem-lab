@@ -1,17 +1,15 @@
 # ============================================================================
 # Configuración centralizada del laboratorio - Foundry MAF (AIServices)
 # ============================================================================
-# INSTRUCCIONES:
-# 1. Copia este archivo a 'lab-config.ps1' en la misma carpeta
-# 2. Actualiza los valores según tu entorno de Azure
-# 3. lab-config.ps1 está en .gitignore y no se subirá al repositorio
-# ============================================================================
 
 # Subscription (dejar vacío para usar la subscription activa)
-$script:SubscriptionId = ""  # Ejemplo: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx"
+$script:SubscriptionId = "00000000000000000000000000000000"
 
 # Región
 $script:Location = "eastus2"
+
+# Web App / App Service (excepción regional por licenciamiento)
+$script:WebAppLocation = "spaincentral"
 
 # Resource Group
 $script:ResourceGroupName = "rg-agents-lab"
@@ -23,13 +21,17 @@ $script:ModelSku = "GlobalStandard"
 $script:ModelCapacity = 10  # TPM en miles (10 = 10K tokens por minuto)
 
 # Recurso Foundry para MAF
-$script:FoundryName = "foundry-maf-lab"
+$script:FoundryName = "agent-identity-viewer"
+
+# Observabilidad OTel (valores fijos)
+$script:OtelServiceName = "agent-identity-viewer"
+$script:OtelServiceNamespace = "agent-idetity-viewer-name-space"
 
 # Tags para recursos
 $script:Tags = @{
     Environment = "lab"
-    Project     = "ms-agents-ecosystem-lab"
-    Purpose     = "comparative-study"
+    Project     = "agents-ecosystem-study"
+    Purpose     = "agent study and demos"
 }
 
 # ============================================================================
@@ -37,7 +39,7 @@ $script:Tags = @{
 # ============================================================================
 
 function Get-TagsString {
-    $tagPairs = $script:Tags.GetEnumerator() | ForEach-Object { "$(($_.Key)=$($_.Value))" }
+    $tagPairs = $script:Tags.GetEnumerator() | ForEach-Object { "$($_.Key)=$($_.Value)" }
     return $tagPairs -join " "
 }
 

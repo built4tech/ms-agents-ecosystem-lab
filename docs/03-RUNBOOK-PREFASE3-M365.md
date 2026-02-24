@@ -6,7 +6,7 @@ Documento operativo corto para ejecutar validaciones **Go/No-Go** antes de inici
 
 Este runbook valida:
 
-- Funcionamiento CLI (`main.py`)
+- Funcionamiento CLI (`main.py cli` / `main_cli.py`)
 - Funcionamiento endpoint runtime M365 (`main_m365.py`)
 - Validación manual por `POST /api/messages`
 - Validación con Microsoft 365 Agents Playground
@@ -32,7 +32,6 @@ Instala dependencias necesarias:
 
 ```powershell
 pip install -r requirements.txt
-pip install -r platforms/maf/01-simple-chat/requirements-m365.txt
 npm install -g @microsoft/teams-app-test-tool
 ```
 
@@ -55,8 +54,8 @@ az account show --output table
 En terminal A:
 
 ```powershell
-cd platforms/maf/01-simple-chat
-python .\main.py
+cd .
+python .\main.py cli
 ```
 
 Prueba rápida:
@@ -73,7 +72,7 @@ Prueba rápida:
 En terminal A:
 
 ```powershell
-cd platforms/maf/01-simple-chat
+cd .
 python .\main_m365.py
 ```
 

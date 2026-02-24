@@ -6,7 +6,7 @@ Documento operativo adicional para validar Fase 3 sin perder capacidad de prueba
 
 Este runbook cubre:
 
-- Regresión local de CLI (`main.py`) con Entra ID (`AzureCliCredential`)
+- Regresión local de CLI (`main.py cli` / `main_cli.py`) con Entra ID (`AzureCliCredential`)
 - Arranque local de runtime M365 (`main_m365.py`) con auth de canal (service principal)
 - Verificación de enforcement de seguridad (`401` sin token)
 - Prueba de canal mediante Microsoft 365 Agents Playground + túnel
@@ -21,7 +21,7 @@ No cubre despliegue productivo final ni observabilidad avanzada de fases posteri
   - `ENDPOINT_API`, `DEPLOYMENT_NAME`, `API_VERSION`
   - `MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_APP_TENANTID`
 - `az login` activo
-- Dependencias instaladas (`requirements.txt` y `platforms/maf/01-simple-chat/requirements-m365.txt`)
+- Dependencias instaladas (`requirements.txt` en raíz)
 - `teamsapptester` disponible
 - Entorno virtual activo (`.venv`) o ejecución explícita con `./.venv/Scripts/python.exe`
 
@@ -42,8 +42,8 @@ az account show --output table
 ### 2) Regresión CLI local (Terminal A)
 
 ```powershell
-cd platforms/maf/01-simple-chat
-"exit" | C:/Users/carlosmu/Documents/code/ms-agents-ecosystem-lab/.venv/Scripts/python.exe .\main.py
+cd .
+"exit" | C:/Users/carlosmu/Documents/code/ms-agents-ecosystem-lab/.venv/Scripts/python.exe .\main.py cli
 ```
 
 **OK esperado:** inicializa agente y termina limpio.
@@ -51,7 +51,7 @@ cd platforms/maf/01-simple-chat
 ### 3) Arrancar runtime M365 autenticado (Terminal B)
 
 ```powershell
-cd platforms/maf/01-simple-chat
+cd .
 C:/Users/carlosmu/Documents/code/ms-agents-ecosystem-lab/.venv/Scripts/python.exe .\main_m365.py
 ```
 
@@ -147,7 +147,7 @@ teamsapptester start -e https://<tu-subdominio>/api/messages --channel-id msteam
 
 | Caso | Resultado esperado |
 | --- | --- |
-| CLI (`main.py`) | PASS |
+| CLI (`main.py cli`) | PASS |
 | Runtime M365 (`main_m365.py`) | PASS |
 | GET directo sin token | `401` (PASS) |
 | Playground conectado por túnel | PASS |

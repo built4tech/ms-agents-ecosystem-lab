@@ -14,13 +14,13 @@ Esta secuencia te permite pasar de visión estratégica (plan) a detalle operati
 
 ## 1) Qué problema resuelve esta integración runtime
 
-Antes de esta integración, tu agente solo se ejecutaba en CLI (`main.py`).
+Antes de esta integración, tu agente solo se ejecutaba en CLI (hoy disponible como `main.py cli` o `main_cli.py`).
 
 Con esta integración, añadimos un **endpoint HTTP** compatible con el protocolo de actividades de Microsoft 365 Agents SDK para poder recibir eventos desde canales (Copilot/Teams/Playground/Bot pipeline).
 
-Resultado: ahora existen dos entradas independientes:
+Resultado: ahora existen dos modos de entrada:
 
-- `main.py` -> experiencia local por terminal (CLI)
+- `main.py` -> dispatcher (`sin argumentos` arranca `main_m365.py`, `cli` arranca `main_cli.py`)
 - `main_m365.py` -> endpoint HTTP `/api/messages`
 
 Ambas usan el mismo núcleo de negocio (`ChatService` -> `SimpleChatAgent`).
@@ -185,7 +185,7 @@ Este último punto conecta el canal M365 runtime con tu agente original: sigue u
 
 ---
 
-### 2.4 `app/core/chat_service.py`
+### 2.4 `app/core/agent_viewer.py`
 
 Responsabilidad: desacoplar canal de negocio.
 
@@ -390,7 +390,7 @@ Para `POST` manual funcional en tu endpoint, usa al menos:
 ### 10.1 Levantar servidor
 
 ```powershell
-cd .\platforms\maf\01-simple-chat
+cd .
 python .\main_m365.py
 ```
 
@@ -440,7 +440,7 @@ Si quieres ejecutar este checklist en modo operativo paso a paso, usa: [03-RUNBO
 
 ### A. Funcionalidad base
 
-- [ ] `main.py` (CLI) sigue funcionando sin regresiones.
+- [ ] `main.py cli` (CLI) sigue funcionando sin regresiones.
 - [ ] `main_m365.py` arranca y expone `GET /api/messages` con `200`.
 - [ ] `POST /api/messages` con Activity válida + `expectReplies` devuelve respuesta del agente.
 - [ ] Comandos `/help` y `/clear` funcionan por canal runtime.
@@ -501,10 +501,10 @@ npm --version
 #### Dependencias Python del agente
 
 - Entorno virtual activo para este proyecto.
-- Dependencias de canal M365 instaladas:
+- Dependencias del módulo instaladas:
 
 ```powershell
-pip install -r platforms/maf/01-simple-chat/requirements-m365.txt
+pip install -r requirements.txt
 ```
 
 ### 13.3 Instalación de Playground
@@ -526,7 +526,7 @@ teamsapptester
 #### Terminal 1 - Servidor del agente
 
 ```powershell
-cd platforms/maf/01-simple-chat
+cd .
 python .\main_m365.py
 ```
 

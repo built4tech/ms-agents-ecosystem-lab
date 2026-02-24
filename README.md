@@ -19,15 +19,21 @@ Para seguir la evolución del agente hacia Microsoft 365/Copilot, utiliza esta s
 2. Ejecutar ejemplos incrementales (simple chat y extensiones de canal M365) sobre un único recurso Foundry.
 3. Mantener scripts de infraestructura mínimos y reproducibles.
 
+## Estado de alcance (2026-02-24)
+
+- El alcance activo del laboratorio se centra en un único runtime de agente en la **raíz del repositorio**.
+- La estructura histórica por plataformas quedó retirada para evitar duplicidad de código y rutas.
+- La documentación y los runbooks actuales deben interpretarse con esta estructura raíz.
+
 ## Estructura del proyecto
 
 ```
 ms-agents-ecosystem-lab/
-├── platforms/
-│   └── maf/
-│       ├── 01-simple-chat/
-│       ├── 02-tools_mcp/
-│       └── 03-observabilidad/
+├── app/
+├── tests/
+├── main.py
+├── main_cli.py
+├── main_m365.py
 ├── infra/
 │   ├── config/
 │   │   └── lab-config.ps1
@@ -43,6 +49,12 @@ ms-agents-ecosystem-lab/
 │   ├── 01-PLAN-M365-AGENT365.md
 │   ├── 02-GUIA-FLUJO-RUNTIME-M365.md
 │   └── 03-RUNBOOK-PREFASE3-M365.md
+├── dist/
+│   ├── dev/
+│   │   ├── build-m365-manifest.ps1
+│   │   └── manifest.template.json
+│   ├── deploy/
+│   └── m365-manifest/
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -115,10 +127,27 @@ cd ..\scripts
 
 ### 5. Generar variables de entorno
 ```powershell
-.\show-endpoints.ps1
+.\03-m365-service-principal.ps1
+.\04-observability.ps1
 copy ..\..\.env.generated ..\..\.env
 ```
 Consulta [.env.example](.env.example) para conocer cada variable.
+
+### 5.1 Flujo manual requerido para App Service M365
+
+El script `05-webapp-m365.ps1` **no** forma parte de `deploy-all.ps1`.
+
+Debe ejecutarse manualmente después de completar esta secuencia:
+
+```powershell
+cd ..\scripts
+.\03-m365-service-principal.ps1
+.\04-observability.ps1
+copy ..\..\.env.generated ..\..\.env
+.\05-webapp-m365.ps1
+```
+
+Razón: `05-webapp-m365.ps1` carga las App Settings de la Web App desde `.env.generated`, y ese archivo debe estar previamente completado por `01..04` y revisado.
 
 ### 6. Instalar dependencias
 ```powershell
@@ -130,14 +159,14 @@ pip install -r requirements.txt
 
 ### 7. Ejecutar un ejemplo
 ```powershell
-cd platforms/maf/01-simple-chat
-python main.py
+cd .
+python main.py cli
 ```
 
 ### 8. Ejecutar endpoint M365 (runtime)
 
 ```powershell
-cd platforms/maf/01-simple-chat
+cd .
 python main_m365.py
 ```
 
@@ -167,3 +196,4 @@ Confirma escribiendo `ELIMINAR` cuando se solicite para evitar costes innecesari
 1. [docs/01-PLAN-M365-AGENT365.md](docs/01-PLAN-M365-AGENT365.md)
 2. [docs/02-GUIA-FLUJO-RUNTIME-M365.md](docs/02-GUIA-FLUJO-RUNTIME-M365.md)
 3. [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)
+4. [docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md](docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md)

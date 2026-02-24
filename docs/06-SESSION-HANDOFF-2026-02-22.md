@@ -29,10 +29,11 @@ Interpretación operativa: se cerró la transición **Fase 2 → Fase 3** tras v
   - **Completado en local/dev** (`MICROSOFT_APP_ID`, `MICROSOFT_APP_PASSWORD`, `MICROSOFT_APP_TENANTID`, adapter con `MsalConnectionManager`).
 3. Generar/adaptar manifest M365 Copilot y empaquetar `.zip`:
   - **Completado (2026-02-24)**.
-  - Evidencia: `platforms/maf/01-simple-chat/dist/m365-manifest/simple-chat-agent-m365-manifest.zip`
-  - Método: `platforms/maf/01-simple-chat/devTools/build-m365-manifest.ps1`
+  - Evidencia: `dist/m365-manifest/foundry-maf-lab-project-m365-manifest.zip`
+  - Método: `dist/dev/build-m365-manifest.ps1`
 4. Desplegar endpoint público (App Service/Container Apps u otro):
-  - **Pendiente**.
+  - **Completado (2026-02-24)**.
+  - Evidencia: `https://wapp-agent-identities-viewer.azurewebsites.net/api/messages` responde `HTTP 401` (canal protegido, endpoint público alcanzable).
 
 Regla de continuidad: **no avanzar de fase** hasta completar 3 y 4.
 
@@ -54,21 +55,20 @@ Regla de continuidad: **no avanzar de fase** hasta completar 3 y 4.
 
 ## Estado técnico resumido
 
-- CLI (`platforms/maf/01-simple-chat/main.py`): validado.
-- Runtime M365 (`platforms/maf/01-simple-chat/main_m365.py`): autenticación de canal integrada con `MsalConnectionManager` y validada en local/túnel.
+- CLI (`main.py cli` / `main_cli.py`): validado.
+- Runtime M365 (`main_m365.py`): autenticación de canal integrada con `MsalConnectionManager` y validada en local/túnel.
+- Alcance actual del repo (decisión intencional): runtime unificado en raíz (`app/`, entrypoints y `requirements.txt` en raíz).
 - Herramientas de terminal en VS Code:
   - `npm --version`: OK
   - `teamsapptester --version`: OK en terminal nueva tras ajuste de PATH del workspace.
 
 ## Riesgos abiertos relevantes
 
-- Objetivo 4 pendiente (endpoint público publicado) bloquea cierre de Fase 3.
 - Dependencia de consistencia de credenciales/tenant según entorno activo de `az login`.
 
 ## Próximo paso único recomendado
 
-Completar objetivo 4 de [Fase 3](01-PLAN-M365-AGENT365.md):
-- desplegar endpoint público (App Service/Container Apps u otro hosting) y conectar canal.
+Ejecutar validación end-to-end en canal objetivo (M365/Copilot) usando el endpoint público ya desplegado.
 
 **Definition of Done para cerrar Fase 3:**
 - Objetivo 3 completado: manifest Copilot válido y empaquetado.

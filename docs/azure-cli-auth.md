@@ -159,8 +159,8 @@ az login --tenant <tenant-laboratorio>
 az account show --query "{Usuario:user.name, Subscription:name}" --output table
 
 # 4. Ejecutar código
-cd platforms/foundry/01-simple-chat
-python src/main.py
+cd .
+python main.py cli
 ```
 
 ### Escenario 3: Cambiar entre tenant de lab y corporativo

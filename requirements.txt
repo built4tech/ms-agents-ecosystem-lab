@@ -1,4 +1,19 @@
+--pre
 python-dotenv>=1.0.0
 azure-identity>=1.15.0
---pre
-agent-framework
+agent-framework-core==1.0.0b260130
+agent-framework-azure-ai==1.0.0b260130
+azure-ai-agents==1.2.0b5
+azure-ai-projects==2.0.0b3
+microsoft-agents-hosting-aiohttp==0.7.0
+microsoft-agents-authentication-msal==0.7.0
+opentelemetry-api==1.39.1
+opentelemetry-sdk==1.39.1
+opentelemetry-semantic-conventions==0.60b1
+opentelemetry-semantic-conventions-ai==0.4.13
+aiohttp
+
+# Fase posterior (no usadas en la implementación actual de 01-simple-chat):
+# microsoft-agents-a365-runtime
+# microsoft-agents-a365-notifications
+# microsoft-agents-a365-observability-core

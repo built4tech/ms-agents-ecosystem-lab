@@ -5,6 +5,7 @@
 $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
+. "$scriptPath\env-generated-helper.ps1"
 
 $framework = "MAF"
 $foundryName = $script:FoundryName
@@ -192,6 +193,16 @@ Write-Endpoint "Deployment" $deploymentName
 Write-Endpoint "Modelo" $script:ModelName
 Write-Endpoint "Version" $script:ModelVersion
 Write-Endpoint "Endpoint OpenAI" "https://$($foundryInfo.name).openai.azure.com/"
+
+$apiVersion = if ($script:ApiVersion) { $script:ApiVersion } else { "2024-10-21" }
+$envPath = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "02-foundry-maf.ps1" -SectionValues @{
+    ENDPOINT_API    = "https://$($foundryInfo.name).services.ai.azure.com"
+    ENDPOINT_OPENAI = "https://$($foundryInfo.name).openai.azure.com"
+    DEPLOYMENT_NAME = $deploymentName
+    PROJECT_NAME    = $projectName
+    API_VERSION     = $apiVersion
+}
+Write-Endpoint ".env.generated" $envPath
 
 Write-Host "`n$('='*60)" -ForegroundColor Green
 Write-Host " FOUNDRY $framework LISTO" -ForegroundColor Green

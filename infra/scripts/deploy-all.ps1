@@ -16,6 +16,10 @@ Write-Host ""
 $startTime = Get-Date
 
 # Lista de scripts a ejecutar en orden
+# NOTA: 05-webapp-m365.ps1 NO debe ejecutarse aquí porque requiere:
+# 1) ejecutar scripts previos de identidad/observabilidad,
+# 2) completar secciones 03 y 04 en .env.generated,
+# 3) copiar manualmente .env.generated a .env.
 $scripts = @(
     @{ Name = "00-auth.ps1"; Description = "Verificar autenticación" },
     @{ Name = "01-resource-group.ps1"; Description = "Crear Resource Group" },
@@ -65,5 +69,10 @@ Write-Host "╚═════════════════════�
 Write-Host ""
 Write-Host "  Tiempo total: $($duration.Minutes) minutos y $($duration.Seconds) segundos" -ForegroundColor Gray
 Write-Host ""
-Write-Host "  Siguiente paso: Ejecuta 'show-endpoints.ps1' para ver los endpoints" -ForegroundColor Yellow
+Write-Host "  Siguiente paso (manual):" -ForegroundColor Yellow
+Write-Host "    1) .\03-m365-service-principal.ps1" -ForegroundColor Yellow
+Write-Host "    2) .\04-observability.ps1" -ForegroundColor Yellow
+Write-Host "    3) copiar .env.generated -> .env" -ForegroundColor Yellow
+Write-Host "    4) .\05-webapp-m365.ps1" -ForegroundColor Yellow
+Write-Host "  (05-webapp-m365.ps1 no forma parte de deploy-all.ps1 por dependencia de configuración manual)" -ForegroundColor Gray
 Write-Host ""

@@ -34,7 +34,7 @@ Conclusión: **Fase 3 queda en progreso**. No se debe avanzar a Fase 4 hasta com
 
 ### 1) Nuevo módulo de autenticación de canal
 
-Archivo: `platforms/maf/01-simple-chat/app/channels/m365_auth.py`
+Archivo: `app/channels/m365_auth.py`
 
 Responsabilidad:
 - Cargar `.env` raíz.
@@ -49,7 +49,7 @@ Punto clave:
 
 ### 2) Entry point M365 actualizado
 
-Archivo: `platforms/maf/01-simple-chat/main_m365.py`
+Archivo: `main_m365.py`
 
 Antes:
 - Arrancaba con `AGENT_APP` por defecto y `auth_configuration=None`.
@@ -61,7 +61,7 @@ Ahora:
 
 ### 3) Factory para app de canal
 
-Archivo: `platforms/maf/01-simple-chat/app/channels/m365_app.py`
+Archivo: `app/channels/m365_app.py`
 
 Cambio:
 - Se añade `create_agent_application(adapter: CloudAdapter | None)` para soportar inyección de adapter autenticado.
@@ -72,7 +72,7 @@ Objetivo del cambio:
 
 ### 4) Servidor HTTP sin cambio de diseño
 
-Archivo: `platforms/maf/01-simple-chat/app/channels/start_server.py`
+Archivo: `app/channels/start_server.py`
 
 Se mantiene:
 - Middleware `jwt_authorization_middleware`.
@@ -127,7 +127,7 @@ Comportamiento con Fase 3 activa:
 ### Llamadas operativas de validación (runbook)
 
 - CLI local:
-  - `.../.venv/Scripts/python.exe .\main.py`
+  - `.../.venv/Scripts/python.exe .\main.py cli`
 - Runtime canal:
   - `.../.venv/Scripts/python.exe .\main_m365.py`
 - Playground local:

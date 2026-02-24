@@ -11,7 +11,7 @@ Esta secuencia permite pasar de la estrategia de implementación a la operación
 
 ## Contexto actual
 
-La app actual (`main.py` + `app/core/agent.py` + `app/ui/cli.py`) funciona como chat CLI local sobre Azure AI Foundry usando MAF.
+La app actual (`main.py` como dispatcher + `main_cli.py` + `app/core/agent.py` + `app/channels/cli_app.py`) funciona como chat CLI local sobre Azure AI Foundry usando MAF.
 
 Objetivo de esta planificación: evolucionar **sin romper el flujo CLI existente**, añadiendo gradualmente:
 
@@ -59,9 +59,9 @@ En esta fase **no se integra aún el canal Copilot**. Se prepara la base para qu
 
 ### Cambios propuestos (con razón técnica)
 
-1. **Crear un archivo de requerimientos específico para canal M365**
+1. **Consolidar dependencias en un único archivo de requerimientos**
 
-    - Archivo propuesto: `platforms/maf/01-simple-chat/requirements-m365.txt`
+    - Archivo propuesto: `requirements.txt` (raíz)
     - Contenido inicial sugerido:
 
     ```txt
@@ -71,12 +71,12 @@ En esta fase **no se integra aún el canal Copilot**. Se prepara la base para qu
     ```
 
     **Razón**:
-    - Evitar contaminar `requirements.txt` global del laboratorio con dependencias de una sola plataforma.
-    - Permitir instalación incremental por escenario (`CLI-only` vs `M365 channel`).
+    - Mantener una única fuente de verdad para instalación y despliegue.
+    - Reducir errores por desalineación entre runtime local y cloud.
 
-2. **Preparar dependencias opcionales para Agent 365 (preview) por separado**
+2. **Preparar dependencias opcionales para Agent 365 (preview) como bloque comentado**
 
-    - Archivo propuesto: `platforms/maf/01-simple-chat/requirements-agent365-preview.txt`
+    - Archivo propuesto: `requirements.txt` (bloque comentado)
     - Contenido inicial sugerido:
 
     ```txt
@@ -120,8 +120,8 @@ En esta fase **no se integra aún el canal Copilot**. Se prepara la base para qu
 
 4. **Alinear documentación local con el `.env` real del repositorio**
 
-    - Archivo a ajustar en fase de implementación: `platforms/maf/01-simple-chat/README.md`
-    - Punto a corregir: actualmente menciona `platforms/maf/01-simple-chat/.env.example`, pero el archivo existente está en raíz.
+    - Archivo a ajustar en fase de implementación: `README.md` (raíz)
+    - Punto a corregir: toda referencia de setup debe apuntar a `.env.example` en raíz.
 
     **Razón**:
     - Evitar fallos de onboarding por rutas de archivo incorrectas.
@@ -165,7 +165,7 @@ En esta fase **no se integra aún el canal Copilot**. Se prepara la base para qu
 - [ ] Python >= 3.11 validado.
 - [ ] `az login` funcional.
 - [ ] Entorno virtual activo.
-- [ ] Instalación separada de dependencias (`requirements-m365.txt`) verificada.
+- [ ] Instalación de dependencias desde `requirements.txt` verificada.
 
 #### C. Seguridad y cumplimiento
 
@@ -180,11 +180,8 @@ En esta fase **no se integra aún el canal Copilot**. Se prepara la base para qu
 python --version
 az account show
 
-# instalación incremental para canal M365
-pip install -r platforms/maf/01-simple-chat/requirements-m365.txt
-
-# opcional preview Agent 365
-pip install -r platforms/maf/01-simple-chat/requirements-agent365-preview.txt
+# instalación del runtime
+pip install -r requirements.txt
 ```
 
 ### Riesgos específicos de Fase 0 y mitigación
@@ -198,7 +195,7 @@ pip install -r platforms/maf/01-simple-chat/requirements-agent365-preview.txt
 
 ### Entregables de la fase
 
-1. Archivos de dependencias segmentados (`requirements-m365.txt`, `requirements-agent365-preview.txt`).
+1. Archivo único de dependencias (`requirements.txt`) con bloque comentado para fases posteriores.
 2. `.env.example` raíz ampliado con bloque M365 + observabilidad.
 3. README local alineado con rutas reales de configuración.
 4. Checklist go/no-go marcado para iniciar Fase 1.
@@ -258,17 +255,18 @@ Estructura objetivo (mínima):
 app/
   core/
     agent.py                 # SimpleChatAgent actual
-    chat_service.py          # NUEVO: orquesta initialize/process/cleanup
+        agent_viewer.py          # NUEVO: orquesta initialize/process/cleanup
   channels/
-    cli_runner.py            # NUEVO: adapta la CLI actual
-    m365_runner.py           # FUTURO: entrada Agents SDK
-main.py                      # se mantiene para CLI
+        cli_app.py               # adapta la CLI actual
+        m365_app.py              # entrada runtime canal M365
+main.py                      # dispatcher: default M365, `cli` para CLI
+main_cli.py                  # entrypoint CLI
 ```
 
 ### Código orientativo
 
 ```python
-# app/core/chat_service.py
+# app/core/agent_viewer.py
 from app.core.agent import SimpleChatAgent
 
 class ChatService:
@@ -293,7 +291,7 @@ class ChatService:
 
 ### Criterio de salida
 
-- `python main.py` sigue funcionando igual.
+- `python main.py cli` sigue funcionando para CLI.
 - Tests existentes de CLI/chat siguen pasando.
 
 ---
