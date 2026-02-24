@@ -41,10 +41,15 @@ Regla de continuidad: **no avanzar de fase** hasta completar 3 y 4.
 
 1. [01-PLAN-M365-AGENT365.md](01-PLAN-M365-AGENT365.md)
 2. [02-GUIA-FLUJO-RUNTIME-M365.md](02-GUIA-FLUJO-RUNTIME-M365.md)
-3. [03-RUNBOOK-PREFASE3-M365.md](03-RUNBOOK-PREFASE3-M365.md)
-4. [04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md)
-5. [05-DETALLE-CAMBIOS-FASE3-2026-02-22.md](05-DETALLE-CAMBIOS-FASE3-2026-02-22.md)
-6. [README.md](../README.md)
+3. [09-RUNBOOK-UNIFICADO-M365.md](09-RUNBOOK-UNIFICADO-M365.md)
+4. [05-DETALLE-CAMBIOS-FASE3-2026-02-22.md](05-DETALLE-CAMBIOS-FASE3-2026-02-22.md)
+5. [README.md](../README.md)
+
+Runbooks históricos conservados para revisión:
+- [03-RUNBOOK-PREFASE3-M365.md](03-RUNBOOK-PREFASE3-M365.md)
+- [04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md)
+- [07-RUNBOOK-PRUEBAS-CLI-PLAYGROUND-CLOUD.md](07-RUNBOOK-PRUEBAS-CLI-PLAYGROUND-CLOUD.md)
+- [08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md](08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md)
 
 ## Decisiones cerradas (no reabrir salvo instrucción explícita)
 
@@ -86,7 +91,7 @@ Quiero continuar este proyecto exactamente desde el estado actual.
 Lee y usa como fuente canónica, en este orden:
 1) docs/01-PLAN-M365-AGENT365.md
 2) docs/02-GUIA-FLUJO-RUNTIME-M365.md
-3) docs/03-RUNBOOK-PREFASE3-M365.md
+3) docs/09-RUNBOOK-UNIFICADO-M365.md
 4) README.md
 
 Reglas:
@@ -105,4 +110,5 @@ Reglas:
   - `teamsapptester --version`
   - `az account show --output table`
 - Revisar [04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md).
+- Revisar [09-RUNBOOK-UNIFICADO-M365.md](09-RUNBOOK-UNIFICADO-M365.md).
 - Ejecutar siguiente tarea pendiente de Fase 3 (manifest `.zip` o despliegue endpoint público).

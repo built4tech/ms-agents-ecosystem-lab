@@ -36,7 +36,6 @@ az account show
 | `05-webapp-m365.ps1` | Crea App Service (plan + web app) para el runtime M365 en región configurable y carga App Settings desde `.env.generated` |
 | `deploy-all.ps1` | Ejecuta autenticación, RG y Foundry MAF en orden |
 | `destroy-all.ps1` | Elimina el RG y purga soft-delete de la Foundry |
-| `show-endpoints.ps1` | Script informativo (sin generación de `.env.generated`) |
 
 ## Uso rápido
 ```powershell
@@ -67,6 +66,18 @@ Flujo operativo recomendado:
 6. Ejecuta `05-webapp-m365.ps1`, que carga los valores de `.env.generated` como App Settings de la Web App.
 
 Con esto, en cloud la aplicación no depende de archivo `.env`.
+
+## Referencia operativa recomendada
+
+Para ejecución y validación end-to-end (CLI, runtime local, túnel, App Service, cloud y evidencias), usar:
+
+- [../docs/09-RUNBOOK-UNIFICADO-M365.md](../docs/09-RUNBOOK-UNIFICADO-M365.md)
+
+Runbooks históricos conservados:
+- [../docs/03-RUNBOOK-PREFASE3-M365.md](../docs/03-RUNBOOK-PREFASE3-M365.md)
+- [../docs/04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](../docs/04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md)
+- [../docs/07-RUNBOOK-PRUEBAS-CLI-PLAYGROUND-CLOUD.md](../docs/07-RUNBOOK-PRUEBAS-CLI-PLAYGROUND-CLOUD.md)
+- [../docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md](../docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md)
 
 ## Configuración
 Archivo: `infra/config/lab-config.ps1`

@@ -11,8 +11,14 @@ Para seguir la evolución del agente hacia Microsoft 365/Copilot, utiliza esta s
     - Define el roadmap incremental, criterios por fase y decisiones de arquitectura/autenticación.
 2. Guía de flujo técnico runtime: [docs/02-GUIA-FLUJO-RUNTIME-M365.md](docs/02-GUIA-FLUJO-RUNTIME-M365.md)
     - Explica en detalle cómo funciona `main_m365.py`, el endpoint `/api/messages`, estructura de Activity y handlers.
-3. Runbook operativo pre-Fase 3: [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)
-    - Checklist Go/No-Go ejecutable (CLI + endpoint + Playground + casos negativos).
+3. Runbook operativo unificado: [docs/09-RUNBOOK-UNIFICADO-M365.md](docs/09-RUNBOOK-UNIFICADO-M365.md)
+    - Runbook maestro con validaciones CLI + local + túnel + infra + cloud en un solo documento.
+
+Runbooks históricos conservados para revisión:
+- [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)
+- [docs/04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](docs/04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md)
+- [docs/07-RUNBOOK-PRUEBAS-CLI-PLAYGROUND-CLOUD.md](docs/07-RUNBOOK-PRUEBAS-CLI-PLAYGROUND-CLOUD.md)
+- [docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md](docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md)
 
 ## Objetivos
 1. Probar rápidamente un entorno MAF completo en Azure AI Foundry.
@@ -103,7 +109,7 @@ Uso recomendado:
 - Arranca el servidor del agente (`main_m365.py`).
 - Conecta Playground contra `http://127.0.0.1:3978/api/messages`.
 - Ejecuta casos `/help`, `/clear`, mensaje normal y casos negativos.
-- Referencia operativa completa: [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)
+- Referencia operativa completa: [docs/09-RUNBOOK-UNIFICADO-M365.md](docs/09-RUNBOOK-UNIFICADO-M365.md)
 
 ### 2. Autenticación
 ```powershell
@@ -195,5 +201,4 @@ Confirma escribiendo `ELIMINAR` cuando se solicite para evitar costes innecesari
 
 1. [docs/01-PLAN-M365-AGENT365.md](docs/01-PLAN-M365-AGENT365.md)
 2. [docs/02-GUIA-FLUJO-RUNTIME-M365.md](docs/02-GUIA-FLUJO-RUNTIME-M365.md)
-3. [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)
-4. [docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md](docs/08-RUNBOOK-E2E-CLI-INFRA-PLAYGROUND-CLOUD.md)
+3. [docs/09-RUNBOOK-UNIFICADO-M365.md](docs/09-RUNBOOK-UNIFICADO-M365.md)
