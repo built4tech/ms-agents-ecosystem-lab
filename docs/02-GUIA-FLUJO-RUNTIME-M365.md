@@ -4,9 +4,9 @@ Este documento explica en detalle cómo funciona la integración runtime M365, d
 
 ## Lectura lineal recomendada
 
-1. Plan general y decisiones por fases: [PLAN-M365-AGENT365.md](PLAN-M365-AGENT365.md)
+1. Plan general y decisiones por fases: [01-PLAN-M365-AGENT365.md](01-PLAN-M365-AGENT365.md)
 2. Esta guía runtime (implementación y pruebas locales de endpoint)
-3. Ejecución operativa Go/No-Go: [RUNBOOK-PREFASE3-M365.md](RUNBOOK-PREFASE3-M365.md)
+3. Ejecución operativa Go/No-Go: [03-RUNBOOK-PREFASE3-M365.md](03-RUNBOOK-PREFASE3-M365.md)
 
 Esta secuencia te permite pasar de visión estratégica (plan) a detalle operativo (flujo runtime).
 
@@ -436,7 +436,7 @@ Invoke-RestMethod -Uri "http://localhost:3978/api/messages" -Method Post -Conten
 
 Usa este checklist como criterio Go/No-Go antes de pasar a despliegue/publicación.
 
-Si quieres ejecutar este checklist en modo operativo paso a paso, usa: [RUNBOOK-PREFASE3-M365.md](RUNBOOK-PREFASE3-M365.md)
+Si quieres ejecutar este checklist en modo operativo paso a paso, usa: [03-RUNBOOK-PREFASE3-M365.md](03-RUNBOOK-PREFASE3-M365.md)
 
 ### A. Funcionalidad base
 

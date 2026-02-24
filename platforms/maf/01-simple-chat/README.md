@@ -97,8 +97,15 @@ Inicia sesión con Azure CLI:
 az login
 ```
 
-Esto establece tu contexto de autenticación. Si defines `API_KEY` en `.env`, se usará en su lugar.
 Esto establece tu contexto de autenticación para Foundry en entorno local.
+
+Para el canal M365 en Fase 3, además debes definir en `/.env`:
+
+- `MICROSOFT_APP_ID`
+- `MICROSOFT_APP_PASSWORD`
+- `MICROSOFT_APP_TENANTID`
+
+El runtime `main_m365.py` usa estas credenciales de aplicación para validar JWT del canal y para el adapter del SDK.
 
 ## ▶️ Ejecución
 
@@ -117,7 +124,10 @@ python main_m365.py
 Endpoint disponible:
 
 - `POST http://localhost:3978/api/messages`
-- `GET http://localhost:3978/api/messages` (health check, devuelve 200)
+- `GET http://localhost:3978/api/messages` (health check; en Fase 3 requiere token válido si auth de canal está activa)
+
+Nota Fase 3: con autenticación de canal activa, invocaciones directas sin header `Authorization` reciben `401 Unauthorized`.
+Para pruebas locales de canal usa Playground/Dev Tunnel o peticiones firmadas con token válido.
 
 ### Ejemplo de Sesión
 

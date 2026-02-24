@@ -7,11 +7,11 @@ Laboratorio centrado en **Microsoft Agent Framework (MAF)** sobre Azure AI Found
 
 Para seguir la evolución del agente hacia Microsoft 365/Copilot, utiliza esta secuencia:
 
-1. Plan por fases y decisiones: [docs/PLAN-M365-AGENT365.md](docs/PLAN-M365-AGENT365.md)
+1. Plan por fases y decisiones: [docs/01-PLAN-M365-AGENT365.md](docs/01-PLAN-M365-AGENT365.md)
     - Define el roadmap incremental, criterios por fase y decisiones de arquitectura/autenticación.
-2. Guía de flujo técnico runtime: [docs/GUIA-FLUJO-RUNTIME-M365.md](docs/GUIA-FLUJO-RUNTIME-M365.md)
+2. Guía de flujo técnico runtime: [docs/02-GUIA-FLUJO-RUNTIME-M365.md](docs/02-GUIA-FLUJO-RUNTIME-M365.md)
     - Explica en detalle cómo funciona `main_m365.py`, el endpoint `/api/messages`, estructura de Activity y handlers.
-3. Runbook operativo pre-Fase 3: [docs/RUNBOOK-PREFASE3-M365.md](docs/RUNBOOK-PREFASE3-M365.md)
+3. Runbook operativo pre-Fase 3: [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)
     - Checklist Go/No-Go ejecutable (CLI + endpoint + Playground + casos negativos).
 
 ## Objetivos
@@ -40,9 +40,9 @@ ms-agents-ecosystem-lab/
 │       └── show-endpoints.ps1
 ├── docs/
 │   ├── azure-cli-auth.md
-│   ├── PLAN-M365-AGENT365.md
-│   ├── GUIA-FLUJO-RUNTIME-M365.md
-│   └── RUNBOOK-PREFASE3-M365.md
+│   ├── 01-PLAN-M365-AGENT365.md
+│   ├── 02-GUIA-FLUJO-RUNTIME-M365.md
+│   └── 03-RUNBOOK-PREFASE3-M365.md
 ├── requirements.txt
 ├── .env.example
 └── README.md
@@ -91,7 +91,7 @@ Uso recomendado:
 - Arranca el servidor del agente (`main_m365.py`).
 - Conecta Playground contra `http://127.0.0.1:3978/api/messages`.
 - Ejecuta casos `/help`, `/clear`, mensaje normal y casos negativos.
-- Referencia operativa completa: [docs/RUNBOOK-PREFASE3-M365.md](docs/RUNBOOK-PREFASE3-M365.md)
+- Referencia operativa completa: [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)
 
 ### 2. Autenticación
 ```powershell
@@ -164,6 +164,6 @@ Confirma escribiendo `ELIMINAR` cuando se solicite para evitar costes innecesari
 
 ## Lectura recomendada para avanzar a Fase 3
 
-1. [docs/PLAN-M365-AGENT365.md](docs/PLAN-M365-AGENT365.md)
-2. [docs/GUIA-FLUJO-RUNTIME-M365.md](docs/GUIA-FLUJO-RUNTIME-M365.md)
-3. [docs/RUNBOOK-PREFASE3-M365.md](docs/RUNBOOK-PREFASE3-M365.md)
+1. [docs/01-PLAN-M365-AGENT365.md](docs/01-PLAN-M365-AGENT365.md)
+2. [docs/02-GUIA-FLUJO-RUNTIME-M365.md](docs/02-GUIA-FLUJO-RUNTIME-M365.md)
+3. [docs/03-RUNBOOK-PREFASE3-M365.md](docs/03-RUNBOOK-PREFASE3-M365.md)

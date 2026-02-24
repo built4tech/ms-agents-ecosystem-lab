@@ -2,9 +2,10 @@
 
 ## Ruta de lectura (lineal)
 
-1. Este plan (`PLAN-M365-AGENT365.md`) para entender objetivos, fases y criterios.
-2. Guía de ejecución runtime del canal M365: [GUIA-FLUJO-RUNTIME-M365.md](GUIA-FLUJO-RUNTIME-M365.md)
-3. Ejecución operativa Go/No-Go antes de Fase 3: [RUNBOOK-PREFASE3-M365.md](RUNBOOK-PREFASE3-M365.md)
+1. Este plan (`01-PLAN-M365-AGENT365.md`) para entender objetivos, fases y criterios.
+2. Guía de ejecución runtime del canal M365: [02-GUIA-FLUJO-RUNTIME-M365.md](02-GUIA-FLUJO-RUNTIME-M365.md)
+3. Ejecución operativa Go/No-Go antes de Fase 3: [03-RUNBOOK-PREFASE3-M365.md](03-RUNBOOK-PREFASE3-M365.md)
+4. Validación local + túnel durante Fase 3: [04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md)
 
 Esta secuencia permite pasar de la estrategia de implementación a la operación técnica paso a paso.
 
@@ -407,6 +408,11 @@ Conectar el endpoint de Fase 2 con Azure Bot Service + manifiesto y habilitar us
 2. Configurar secretos/credenciales en entorno.
 3. Generar o adaptar manifest M365 Copilot y empaquetar `.zip`.
 4. Desplegar endpoint público (App Service/Container Apps u otro hosting).
+
+### Runbook operativo de apoyo
+
+Para pruebas incrementales en local sin romper continuidad, usar:
+- [04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md)
 
 ### Código orientativo de configuración
 
