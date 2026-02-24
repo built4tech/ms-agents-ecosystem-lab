@@ -37,6 +37,10 @@ Interpretación operativa: se cerró la transición **Fase 2 → Fase 3** tras v
 
 Regla de continuidad: **no avanzar de fase** hasta completar 3 y 4.
 
+Estado de cierre de fase (criterio del plan):
+- Aunque 3 y 4 estén técnicamente completados, **Fase 3 sigue abierta** hasta validar en tenant que el agente **aparece en Copilot y responde end-to-end**.
+- Por tanto, la decisión para pasar a Fase 4 es actualmente: **NO-GO (pendiente validación en Copilot)**.
+
 ## Artefactos canónicos a leer al iniciar nueva sesión
 
 1. [01-PLAN-M365-AGENT365.md](01-PLAN-M365-AGENT365.md)
@@ -75,10 +79,25 @@ Runbooks históricos conservados para revisión:
 
 Ejecutar validación end-to-end en canal objetivo (M365/Copilot) usando el endpoint público ya desplegado.
 
+Paso exacto bloqueante (siguiente sesión):
+1. Cargar el paquete `dist/m365-manifest/<project>-m365-manifest.zip` en el tenant objetivo.
+2. Confirmar que el agente aparece en Copilot para el usuario de prueba.
+3. Ejecutar 3 pruebas mínimas en Copilot:
+  - saludo
+  - `/help` (o comando equivalente)
+  - mensaje libre de negocio
+4. Guardar evidencia (capturas o transcript) de presencia + respuestas.
+5. Registrar resultado final de fase:
+  - PASS cierre Fase 3: aparece + responde end-to-end.
+  - FAIL cierre Fase 3: no aparece o no responde; no avanzar a Fase 4.
+
+Referencia operativa: sección `5.5 Validación en Copilot (tenant)` en [09-RUNBOOK-UNIFICADO-M365.md](09-RUNBOOK-UNIFICADO-M365.md).
+
 **Definition of Done para cerrar Fase 3:**
 - Objetivo 3 completado: manifest Copilot válido y empaquetado.
 - Objetivo 4 completado: endpoint público desplegado y operativo.
 - Prueba end-to-end en canal objetivo con endpoint publicado.
+- Validación en Copilot del tenant: el agente aparece y responde mensajes básicos end-to-end.
 - No quedan pendientes críticos de autenticación/canal.
 
 ---
@@ -111,4 +130,4 @@ Reglas:
   - `az account show --output table`
 - Revisar [04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md](04-RUNBOOK-FASE3-LOCAL-TUNEL-M365.md).
 - Revisar [09-RUNBOOK-UNIFICADO-M365.md](09-RUNBOOK-UNIFICADO-M365.md).
-- Ejecutar siguiente tarea pendiente de Fase 3 (manifest `.zip` o despliegue endpoint público).
+- Ejecutar únicamente el paso bloqueante de cierre Fase 3 en Copilot tenant (sección `5.5`).

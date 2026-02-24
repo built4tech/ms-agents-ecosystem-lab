@@ -331,6 +331,25 @@ Casos mínimos:
 - `/clear`
 - mensaje libre
 
+## 5.5 Validación en Copilot (tenant) — criterio de cierre Fase 3
+
+Objetivo: verificar el criterio de salida del plan: **el agente aparece en Copilot y responde mensajes básicos end-to-end**.
+
+Pasos mínimos:
+1. Cargar/actualizar el manifest generado (`dist/m365-manifest/<project>-m365-manifest.zip`) en el tenant de destino.
+2. Confirmar en el catálogo del tenant que la app/agente está visible para el usuario de prueba.
+3. Abrir Copilot (scope del tenant) y localizar el agente.
+4. Ejecutar al menos 3 interacciones:
+  - saludo
+  - `/help` (o comando equivalente expuesto)
+  - mensaje libre de negocio
+5. Verificar respuesta funcional end-to-end y ausencia de error de canal/autenticación.
+
+Evidencia mínima requerida:
+- Captura de presencia del agente en Copilot.
+- Captura o transcript de 3 interacciones exitosas.
+- Marca temporal + usuario/tenant de prueba.
+
 ---
 
 ## 6) Casos negativos obligatorios
@@ -392,12 +411,14 @@ GO:
 - Manifest + ZIP generado en `dist/m365-manifest`.
 - Deploy cloud PASS y endpoint estable.
 - Casos negativos con error esperado y trazable.
+- Validación Copilot tenant PASS (`aparece + responde end-to-end`).
 
 NO-GO:
 - `503` o timeout en cloud.
 - Tracebacks recurrentes en startup/runtime.
 - Fallo en `/help`, `/clear` o mensaje normal en Playground (local/túnel/cloud).
 - Errores de identidad no diagnosticados.
+- El agente no aparece en Copilot del tenant o no responde end-to-end.
 
 ---
 
