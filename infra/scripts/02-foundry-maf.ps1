@@ -8,6 +8,17 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\auth-permissions-helper.ps1"
 . "$scriptPath\env-generated-helper.ps1"
 
+Write-Host ""
+Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║                  OBJETIVO DEL SCRIPT                         ║" -ForegroundColor Cyan
+Write-Host "╠══════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  1) Crear/reutilizar recurso Foundry (AIServices)            " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  2) Habilitar allowProjectManagement                         " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  3) Crear/reutilizar proyecto de agentes                     " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  4) Desplegar/reutilizar modelo configurado                  " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  5) Persistir variables en .env.generated                    " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+
 $account = Assert-InfraPrerequisites -ForScript "02-foundry-maf.ps1"
 
 $framework = "MAF"
@@ -29,6 +40,31 @@ if ($rgExists -eq "false") {
 # 1. Recurso Foundry (AIServices)
 # ============================================================================
 $accountBaseUrl = "https://management.azure.com/subscriptions/$($account.id)/resourceGroups/$($script:ResourceGroupName)/providers/Microsoft.CognitiveServices/accounts/$foundryName"
+
+function Wait-AllowProjectManagementReady {
+    param(
+        [string]$AccountUrl,
+        [int]$Retries = 12,
+        [int]$DelaySeconds = 5
+    )
+
+    for ($i = 1; $i -le $Retries; $i++) {
+        $allowFlag = az rest `
+            --method get `
+            --url $AccountUrl `
+            --url-parameters api-version=2025-06-01 `
+            --query "properties.allowProjectManagement" `
+            --output tsv 2>$null
+
+        if ($LASTEXITCODE -eq 0 -and "$allowFlag" -eq "true") {
+            return $true
+        }
+
+        Start-Sleep -Seconds $DelaySeconds
+    }
+
+    return $false
+}
 
 Write-Step "Creando recurso Foundry (AIServices) '$foundryName'..."
 
@@ -73,13 +109,18 @@ if ($allowProjectManagement -ne $true) {
     Set-Content -Path $accountPatchFile -Value $accountPatch -Encoding utf8
 
     try {
-        az rest `
+        $patchOutput = az rest `
             --method patch `
             --url $accountBaseUrl `
             --url-parameters api-version=2025-06-01 `
             --headers "Content-Type=application/json" `
             --body @$accountPatchFile `
-            --output none | Out-Null
+            --output none 2>&1 | Out-String
+
+        if ($LASTEXITCODE -ne 0) {
+            throw $patchOutput
+        }
+
         Write-Success "allowProjectManagement habilitado"
     } catch {
         Write-Error "No se pudo habilitar allowProjectManagement ($($_.Exception.Message))"
@@ -88,21 +129,22 @@ if ($allowProjectManagement -ne $true) {
         Remove-Item -Path $accountPatchFile -ErrorAction SilentlyContinue
     }
 } else {
+    Write-Step "Verificando allowProjectManagement en '$foundryName'..."
     Write-Success "allowProjectManagement ya está habilitado"
 }
+
+Write-Step "Verificando propagación de allowProjectManagement..."
+$allowReady = Wait-AllowProjectManagementReady -AccountUrl $accountBaseUrl -Retries 12 -DelaySeconds 5
+if (-not $allowReady) {
+    Write-Error "allowProjectManagement no quedó disponible a tiempo"
+    exit 1
+}
+Write-Success "allowProjectManagement confirmado"
 
 $foundryInfo = az cognitiveservices account show `
     --name $foundryName `
     --resource-group $script:ResourceGroupName `
     --output json | ConvertFrom-Json
-
-Write-Host "`n$('-'*60)" -ForegroundColor Gray
-Write-Host " FOUNDRY INFO" -ForegroundColor Yellow
-Write-Host $('-'*60) -ForegroundColor Gray
-Write-Endpoint "Nombre" $foundryInfo.name
-Write-Endpoint "Location" $foundryInfo.location
-Write-Endpoint "Endpoint API" "https://$($foundryInfo.name).services.ai.azure.com/"
-Write-Endpoint "Endpoint OpenAI" "https://$($foundryInfo.name).openai.azure.com/"
 
 # ============================================================================
 # ============================================================================
@@ -134,13 +176,39 @@ if ($projectExists) {
     Set-Content -Path $projectBodyFile -Value $projectBody -Encoding utf8
 
     try {
-        az rest `
-            --method put `
-            --url $projectBaseUrl `
-            --url-parameters api-version=$projectApiVersion `
-            --headers "Content-Type=application/json" `
-            --body @$projectBodyFile `
-            --output none | Out-Null
+        $projectCreated = $false
+
+        for ($attempt = 1; $attempt -le 6; $attempt++) {
+            $projectOutput = az rest `
+                --method put `
+                --url $projectBaseUrl `
+                --url-parameters api-version=$projectApiVersion `
+                --headers "Content-Type=application/json" `
+                --body @$projectBodyFile `
+                --output none 2>&1 | Out-String
+
+            if ($LASTEXITCODE -eq 0) {
+                $projectCreated = $true
+                break
+            }
+
+            $isAllowPmPropagationIssue =
+                ($projectOutput -match "allowProjectManagement") -and
+                ($projectOutput -match "set to true")
+
+            if ($isAllowPmPropagationIssue -and $attempt -lt 6) {
+                Write-Info "allowProjectManagement aún propagando; reintento $attempt/6 en 10s..."
+                Start-Sleep -Seconds 10
+                continue
+            }
+
+            throw $projectOutput
+        }
+
+        if (-not $projectCreated) {
+            throw "No se pudo crear el proyecto tras varios reintentos"
+        }
+
         Write-Success "Proyecto de agentes creado"
     } catch {
         Write-Error "No se pudo crear el proyecto de agentes ($($_.Exception.Message))"
@@ -149,12 +217,6 @@ if ($projectExists) {
         Remove-Item -Path $projectBodyFile -ErrorAction SilentlyContinue
     }
 }
-
-Write-Host "`n$('-'*60)" -ForegroundColor Gray
-Write-Host " AGENTS PROJECT" -ForegroundColor Yellow
-Write-Host $('-'*60) -ForegroundColor Gray
-Write-Endpoint "Project" $projectName
-Write-Endpoint "API Version" $projectApiVersion
 
 # ============================================================================
 # 3. Desplegar modelo gpt-4o-mini en Foundry
@@ -186,25 +248,20 @@ if ($deploymentExists) {
     Write-Success "Modelo desplegado exitosamente"
 }
 
-Write-Host "`n$('-'*60)" -ForegroundColor Gray
-Write-Host " DEPLOYMENT INFO" -ForegroundColor Yellow
-Write-Host $('-'*60) -ForegroundColor Gray
-Write-Endpoint "Deployment" $deploymentName
-Write-Endpoint "Modelo" $script:ModelName
-Write-Endpoint "Version" $script:ModelVersion
-Write-Endpoint "Endpoint OpenAI" "https://$($foundryInfo.name).openai.azure.com/"
-
 $apiVersion = if ($script:ApiVersion) { $script:ApiVersion } else { "2024-10-21" }
-$envPath = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "02-foundry-maf.ps1" -SectionValues @{
+$null = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "02-foundry-maf.ps1" -SectionValues @{
     ENDPOINT_API    = "https://$($foundryInfo.name).services.ai.azure.com"
     ENDPOINT_OPENAI = "https://$($foundryInfo.name).openai.azure.com"
     DEPLOYMENT_NAME = $deploymentName
     PROJECT_NAME    = $projectName
     API_VERSION     = $apiVersion
 }
-Write-Endpoint ".env.generated" $envPath
 
-Write-Host "`n$('='*60)" -ForegroundColor Green
-Write-Host " FOUNDRY $framework LISTO" -ForegroundColor Green
-Write-Host $('='*60) -ForegroundColor Green
-Write-Host ""
+Write-Host "`n$('-'*60)" -ForegroundColor Gray
+Write-Host " ACTUALIZACIÓN DE .env.generated" -ForegroundColor Yellow
+Write-Host $('-'*60) -ForegroundColor Gray
+Write-Endpoint "ENDPOINT_API" "https://$($foundryInfo.name).services.ai.azure.com"
+Write-Endpoint "ENDPOINT_OPENAI" "https://$($foundryInfo.name).openai.azure.com"
+Write-Endpoint "DEPLOYMENT_NAME" $deploymentName
+Write-Endpoint "PROJECT_NAME" $projectName
+Write-Endpoint "API_VERSION" $apiVersion

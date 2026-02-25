@@ -6,21 +6,101 @@ $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
 
+function Get-RepoRoot {
+    return Split-Path -Parent (Split-Path -Parent $scriptPath)
+}
+
+function Get-DotEnvValue {
+    param(
+        [string]$EnvPath,
+        [string]$Key
+    )
+
+    if (-not (Test-Path $EnvPath)) { return $null }
+
+    $line = Get-Content -Path $EnvPath | Where-Object { $_ -match "^\s*$Key\s*=" } | Select-Object -First 1
+    if (-not $line) { return $null }
+
+    return (($line -split "=", 2)[1]).Trim()
+}
+
+function Write-Section {
+    param([string]$Title)
+    Write-Host "`n$('-'*60)" -ForegroundColor DarkGray
+    Write-Host " $Title" -ForegroundColor Cyan
+    Write-Host $('-'*60) -ForegroundColor DarkGray
+}
+
+function Write-Item {
+    param(
+        [string]$Label,
+        [string]$Value
+    )
+    Write-Host -NoNewline "  - $Label" -ForegroundColor Yellow
+    Write-Host ": $Value" -ForegroundColor White
+}
+
+function Confirm-DeleteLocalEnvFiles {
+    param(
+        [string]$EnvPath,
+        [string]$EnvGeneratedPath
+    )
+
+    Write-Section "LIMPIEZA LOCAL (ARCHIVOS .ENV)"
+    Write-Item "Archivo" $EnvPath
+    Write-Item "Archivo" $EnvGeneratedPath
+
+    $shouldDeleteFiles = Read-Host "  ¿Deseas eliminar estos archivos locales obsoletos? (s/N)"
+    if ($env:FORCE_DESTROY -eq "1") { $shouldDeleteFiles = "s" }
+
+    if ($shouldDeleteFiles -notin @("s", "S")) {
+        Write-Info "Se mantienen los archivos locales de entorno."
+        return
+    }
+
+    if (Test-Path $EnvPath) {
+        Remove-Item -Path $EnvPath -Force
+        Write-Success ".env eliminado"
+    } else {
+        Write-Info ".env no existe"
+    }
+
+    if (Test-Path $EnvGeneratedPath) {
+        Remove-Item -Path $EnvGeneratedPath -Force
+        Write-Success ".env.generated eliminado"
+    } else {
+        Write-Info ".env.generated no existe"
+    }
+}
+
 Write-Host ""
 Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Red
 Write-Host "║                                                              ║" -ForegroundColor Red
-Write-Host "║          MS AGENTS ECOSYSTEM LAB - DESTROY ALL              ║" -ForegroundColor Red
+Write-Host "║          MS AGENTS ECOSYSTEM LAB - DESTROY ALL               ║" -ForegroundColor Red
 Write-Host "║                                                              ║" -ForegroundColor Red
 Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Red
 Write-Host ""
 
-# Mostrar qué se va a eliminar
-Write-Host "  Se eliminaran los siguientes recursos:" -ForegroundColor Yellow
-Write-Host ""
-Write-Host "  Resource Group: $($script:ResourceGroupName)" -ForegroundColor White
-Write-Host "    └── Foundry MAF (AIServices) y su deployment" -ForegroundColor Gray
-Write-Host "        └── Proyecto de agentes asociado" -ForegroundColor Gray
-Write-Host ""
+$repoRoot = Get-RepoRoot
+$envPath = Join-Path $repoRoot ".env"
+$envGeneratedPath = Join-Path $repoRoot ".env.generated"
+$appId = Get-DotEnvValue -EnvPath $envPath -Key "MICROSOFT_APP_ID"
+
+Write-Section "ALCANCE DE ELIMINACIÓN"
+Write-Host "  Recursos vinculados al Resource Group (se eliminan con RG):" -ForegroundColor White
+Write-Item "Resource Group" $script:ResourceGroupName
+$foundryDisplayName = if ($script:FoundryName) { $script:FoundryName } else { "(no configurado)" }
+Write-Item "Foundry" $foundryDisplayName
+Write-Item "App Service / Plan" "incluidos en el Resource Group"
+Write-Item "Observabilidad" "Log Analytics + App Insights"
+
+Write-Host "`n  Recursos globales (Entra ID, fuera del RG):" -ForegroundColor White
+if (-not [string]::IsNullOrWhiteSpace($appId)) {
+    Write-Item "App Registration" $appId
+    Write-Item "Service Principal" $appId
+} else {
+    Write-Item "App Registration / Service Principal" "no detectado en .env (MICROSOFT_APP_ID)"
+}
 
 # Confirmar eliminación
 Write-Host "  ⚠️  ESTA ACCIÓN ES IRREVERSIBLE" -ForegroundColor Red
@@ -41,8 +121,14 @@ if ($script:FoundryName) { $foundryNames += $script:FoundryName }
 
 # Establecer subscription si se especificó
 if ($script:SubscriptionId) {
-    Write-Step "Estableciendo subscription: $($script:SubscriptionId)"
+    Write-Step "Estableciendo subscription:"
     az account set --subscription $script:SubscriptionId | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "Subscripción establecida en: $($script:SubscriptionId)"
+    } else {
+        Write-Error "No se pudo establecer la subscription '$($script:SubscriptionId)'"
+        exit 1
+    }
 }
 
 function Invoke-FoundryCleanup {
@@ -54,7 +140,7 @@ function Invoke-FoundryCleanup {
     if (-not $Names -or $Names.Count -eq 0) { return }
 
     foreach ($foundryName in $Names) {
-        Write-Info "Procesando $foundryName"
+        Write-Info "Procesando '$foundryName'"
 
         if ($RemoveActiveFirst) {
             $foundryExists = az cognitiveservices account show `
@@ -63,20 +149,24 @@ function Invoke-FoundryCleanup {
                 --output json 2>$null
 
             if ($foundryExists) {
-                Write-Info "  Eliminando cuenta activa..."
-                try {
-                    az cognitiveservices account delete `
-                        --name $foundryName `
-                        --resource-group $script:ResourceGroupName `
-                        --output none
-                }
-                catch {
-                    $msg = $_.Exception.Message
-                    if ($msg -match "CannotDeleteResource" -and $msg -match "nested resources") {
-                        Write-Info "  No se pudo eliminar (tiene recursos hijos). Se continuará con la purga de soft-delete."
+                Write-Info "  Intentando eliminar cuenta activa..."
+                $deleteOutput = az cognitiveservices account delete `
+                    --name $foundryName `
+                    --resource-group $script:ResourceGroupName `
+                    --output none 2>&1 | Out-String
+
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Success "  Eliminación de cuenta Foundry solicitada"
+                } else {
+                    $isNestedResourceBlock =
+                        ($deleteOutput -match "CannotDeleteResource") -and
+                        ($deleteOutput -match "nested resources")
+
+                    if ($isNestedResourceBlock) {
+                        Write-Info "  Foundry tiene recursos hijos (projects). Se eliminará al borrar el RG y luego se purgará soft-delete."
                     }
                     else {
-                        throw
+                        throw "Error eliminando Foundry '$foundryName': $deleteOutput"
                     }
                 }
             }
@@ -157,13 +247,39 @@ function Invoke-FoundryPurgeLoop {
 # Intentar eliminar y purgar los recursos Foundry antes de eliminar el RG para evitar soft-delete colgando
 # Se ejecuta antes de comprobar si existe el Resource Group porque aunque el RG no exista, podrían existir recursos Foundry en estado soft-deleted que bloqueen futuras creaciones
 if ($foundryNames.Count -gt 0) {
-    Write-Step "Eliminando y purgando recursos Foundry (AIServices) para evitar soft-delete..."
+    Write-Section "LIMPIEZA PREVIA DE FOUNDRY"
+    Write-Step "Preparando limpieza y purga para evitar soft-delete residual..."
     Invoke-FoundryCleanup -Names $foundryNames -RemoveActiveFirst:$true
-    Write-Step "Verificando/purgando soft-delete pendientes antes de eliminar el RG..."
+    Write-Step "Verificando soft-delete pendientes antes de eliminar el RG..."
     Invoke-FoundryPurgeLoop -Names $foundryNames -Retries 6 -DelaySeconds 10
 }
 
-Write-Host ""
+if (-not [string]::IsNullOrWhiteSpace($appId)) {
+    Write-Section "LIMPIEZA GLOBAL (ENTRA ID)"
+
+    Write-Step "Eliminando service principal global '$appId'..."
+    $spExists = az ad sp show --id $appId --output json 2>$null
+    if ($spExists) {
+        az ad sp delete --id $appId --output none
+        Write-Success "Service principal eliminado"
+    } else {
+        Write-Info "Service principal no encontrado o ya eliminado"
+    }
+
+    Write-Step "Eliminando app registration global '$appId'..."
+    $appExists = az ad app show --id $appId --output json 2>$null
+    if ($appExists) {
+        az ad app delete --id $appId --output none
+        Write-Success "App registration eliminada"
+    } else {
+        Write-Info "App registration no encontrada o ya eliminada"
+    }
+} else {
+    Write-Section "LIMPIEZA GLOBAL (ENTRA ID)"
+    Write-Info "No se encontró MICROSOFT_APP_ID en .env; se omite eliminación de recursos globales"
+}
+
+Write-Section "ELIMINACIÓN DEL RESOURCE GROUP"
 Write-Step "Verificando si el Resource Group existe..."
 
 $rgExists = az group exists --name $script:ResourceGroupName
@@ -175,6 +291,8 @@ if ($rgExists -eq "false") {
     exit 0
 }
 
+Write-Success "Resource Group detectado"
+
 Write-Step "Eliminando Resource Group '$($script:ResourceGroupName)'..."
 Write-Info "Esto puede tardar varios minutos..."
 
@@ -184,6 +302,13 @@ az group delete `
     --name $script:ResourceGroupName `
     --yes `
     --no-wait
+
+if ($LASTEXITCODE -eq 0) {
+    Write-Success "Solicitud de eliminación enviada"
+} else {
+    Write-Error "No se pudo lanzar la eliminación del Resource Group"
+    exit 1
+}
 
 Write-Host ""
 Write-Host "  La eliminación se ha iniciado en segundo plano." -ForegroundColor Yellow
@@ -207,6 +332,7 @@ if ($waitForDeletion -eq "s" -or $waitForDeletion -eq "S") {
     $maxWaitSeconds = [int](${env:DESTROY_WAIT_SECONDS} | ForEach-Object { if ($_ -as [int]) { $_ } else { 1800 } })
     $pollSeconds = 10
     $elapsedSeconds = 0
+    $lastState = $null
 
     while ($true) {
         $rgStillExists = az group exists --name $script:ResourceGroupName
@@ -216,7 +342,10 @@ if ($waitForDeletion -eq "s" -or $waitForDeletion -eq "S") {
 
         # Mostrar estado del RG si sigue existiendo
         $state = az group show --name $script:ResourceGroupName --query "properties.provisioningState" -o tsv 2>$null
-        if ($state) { Write-Host -NoNewline "[$state]" }
+        if ($state -and $state -ne $lastState) {
+            Write-Host -NoNewline "[$state]"
+            $lastState = $state
+        }
         Write-Host "." -NoNewline
 
         Start-Sleep -Seconds $pollSeconds
@@ -247,5 +376,9 @@ if ($waitForDeletion -eq "s" -or $waitForDeletion -eq "S") {
         Write-Host ""
         Write-Host "  Tiempo total: $($duration.Minutes) minutos y $($duration.Seconds) segundos" -ForegroundColor Gray
         Write-Host ""
+
+        Confirm-DeleteLocalEnvFiles -EnvPath $envPath -EnvGeneratedPath $envGeneratedPath
     }
+} else {
+    Confirm-DeleteLocalEnvFiles -EnvPath $envPath -EnvGeneratedPath $envGeneratedPath
 }

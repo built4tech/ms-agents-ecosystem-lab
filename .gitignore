@@ -5,8 +5,7 @@ __pycache__/
 
 # Environments
 .venv
-.env
-.env.generated
+.env*
 !.env.example
 
 # Infrastructure config (contains subscription IDs)

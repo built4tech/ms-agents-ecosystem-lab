@@ -10,46 +10,40 @@ function Ensure-AzureCliInstalled {
     Write-Step "Verificando Azure CLI..."
     try {
         $azVersion = az version --output json | ConvertFrom-Json
-        Write-Success "Azure CLI instalado (versión: $($azVersion.'azure-cli'))"
+        return @{ Ok = $true; Detail = "Azure CLI instalado (versión: $($azVersion.'azure-cli'))" }
     } catch {
-        Write-Error "Azure CLI no está instalado. Instálalo desde: https://learn.microsoft.com/cli/azure/install-azure-cli"
-        exit 1
+        return @{ Ok = $false; Detail = "Azure CLI no está instalado. Instálalo desde: https://learn.microsoft.com/cli/azure/install-azure-cli" }
     }
 }
 
 function Ensure-AzureSession {
-    Write-Step "Verificando sesión de Azure..."
+    param([hashtable]$CliCheck)
+
+    if (-not $CliCheck.Ok) {
+        return @{ Ok = $false; Detail = "No se puede validar sesión sin Azure CLI" }
+    }
 
     $account = az account show --output json 2>$null | ConvertFrom-Json
 
     if (-not $account) {
         Write-Info "No hay sesión activa. Iniciando login..."
-        az login --output none
-        $account = az account show --output json | ConvertFrom-Json
-    }
-
-    if ($script:SubscriptionId) {
-        Write-Step "Estableciendo subscription: $($script:SubscriptionId)"
-        az account set --subscription $script:SubscriptionId --output none
+        az login --output none 1>$null 2>$null
         $account = az account show --output json | ConvertFrom-Json
     }
 
     if (-not $account) {
-        Write-Error "No se pudo resolver la cuenta activa de Azure"
-        exit 1
+        return @{ Ok = $false; Detail = "No se pudo resolver la cuenta activa de Azure" }
     }
 
     if ($account.state -ne "Enabled") {
-        Write-Error "La subscription activa no está habilitada (estado: $($account.state))"
-        Write-Info "Selecciona una subscription habilitada con: az account set --subscription <SUBSCRIPTION_ID>"
-        exit 1
+        return @{ Ok = $false; Detail = "La subscription activa no está habilitada (estado: $($account.state))" }
     }
 
-    Write-Success "Sesión activa"
-    Write-Info "Usuario: $($account.user.name)"
-    Write-Info "Tenant: $($account.tenantId)"
-
-    return $account
+    return @{
+        Ok      = $true
+        Detail  = "Sesión activa"
+        Account = $account
+    }
 }
 
 function Get-CurrentPrincipalObjectId {
@@ -72,13 +66,15 @@ function Get-CurrentPrincipalObjectId {
 function Test-RequiredRbacRoles {
     param([pscustomobject]$Account)
 
-    Write-Step "Validando permisos RBAC para despliegue de infraestructura..."
-
     $principalObjectId = Get-CurrentPrincipalObjectId -Account $Account
     if (-not $principalObjectId) {
-        Write-Error "No se pudo resolver el objeto de identidad actual en Entra ID"
-        Write-Info "Confirma que tu cuenta puede consultar Entra ID y vuelve a ejecutar"
-        exit 1
+        return @{
+            ResourceRoleOk   = $false
+            RoleAssignRoleOk = $false
+            DetailResource   = "No se pudo resolver el objeto de identidad actual en Entra ID"
+            DetailAssign     = "No se pudo resolver el objeto de identidad actual en Entra ID"
+            SubscriptionScope = ""
+        }
     }
 
     $subscriptionScope = "/subscriptions/$($Account.id)"
@@ -93,10 +89,13 @@ function Test-RequiredRbacRoles {
         })
 
     if (-not $assignments) {
-        Write-Error "No se encontraron asignaciones RBAC para la identidad en la subscription activa"
-        Write-Info "Necesitas al menos 'Contributor' para crear recursos"
-        Write-Info "Y además 'Owner' o 'User Access Administrator' (o 'Role Based Access Control Administrator') para asignar roles en 05-webapp-m365.ps1"
-        exit 1
+        return @{
+            ResourceRoleOk   = $false
+            RoleAssignRoleOk = $false
+            DetailResource   = "No se encontraron asignaciones RBAC en la subscription activa"
+            DetailAssign     = "No se encontraron asignaciones RBAC en la subscription activa"
+            SubscriptionScope = $subscriptionScope
+        }
     }
 
     $roleNames = @($assignments | ForEach-Object { $_.roleDefinitionName } | Where-Object { $_ } | Select-Object -Unique)
@@ -119,64 +118,195 @@ function Test-RequiredRbacRoles {
         }
     }
 
-    if (-not $hasResourceRole) {
-        Write-Error "Faltan permisos para crear/actualizar recursos en Azure"
-        Write-Info "Permiso mínimo recomendado: Contributor en la subscription o Resource Group objetivo"
-        Write-Info "Asignación ejemplo: az role assignment create --assignee <OBJETO_O_UPN> --role Contributor --scope $subscriptionScope"
-        exit 1
+    $detailResource = if ($hasResourceRole) {
+        "RBAC despliegue OK (Owner/Contributor detectado)"
+    } else {
+        "Faltan permisos para crear/actualizar recursos (requiere Owner o Contributor)"
     }
 
-    if (-not $hasRoleAssignmentRole) {
-        Write-Error "Faltan permisos para asignar roles administrados (necesario en 05-webapp-m365.ps1)"
-        Write-Info "Necesitas Owner, User Access Administrator o Role Based Access Control Administrator"
-        Write-Info "Asignación ejemplo: az role assignment create --assignee <OBJETO_O_UPN> --role ""User Access Administrator"" --scope $subscriptionScope"
-        exit 1
+    $detailAssign = if ($hasRoleAssignmentRole) {
+        "RBAC asignación de roles OK (Owner/UAA/RBAC Admin detectado)"
+    } else {
+        "Faltan permisos para asignar roles administrados (requiere Owner, User Access Administrator o RBAC Admin)"
     }
 
-    Write-Success "Permisos RBAC mínimos validados"
+    return @{
+        ResourceRoleOk    = $hasResourceRole
+        RoleAssignRoleOk  = $hasRoleAssignmentRole
+        DetailResource    = $detailResource
+        DetailAssign      = $detailAssign
+        SubscriptionScope = $subscriptionScope
+    }
 }
 
 function Test-EntraAppPermissions {
-    Write-Step "Validando permisos de Entra ID para App Registration (script 03)..."
     az ad app list --top 1 --query "[0].appId" --output tsv 1>$null 2>$null
-
-    if ($LASTEXITCODE -ne 0) {
-        Write-Error "La identidad actual no puede consultar/gestionar aplicaciones en Entra ID"
-        Write-Info "Para ejecutar 03-m365-service-principal.ps1 necesitas permisos como 'Application Developer' o superiores"
-        Write-Info "También puedes pedir a un administrador que ejecute el script 03 y te comparta las credenciales generadas"
-        exit 1
+    if ($LASTEXITCODE -eq 0) {
+        return @{ Ok = $true; Detail = "Permisos básicos de Entra ID para App Registration validados (az ad app list)" }
     }
 
-    Write-Success "Permisos básicos de Entra ID validados"
+    $directoryRolesRaw = az rest `
+        --method get `
+        --url "https://graph.microsoft.com/v1.0/me/memberOf/microsoft.graph.directoryRole?`$select=displayName" `
+        --output json 2>$null
+
+    if ($LASTEXITCODE -eq 0 -and $directoryRolesRaw) {
+        try {
+            $directoryRoles = $directoryRolesRaw | ConvertFrom-Json
+            $roleNames = @($directoryRoles.value | ForEach-Object { $_.displayName } | Where-Object { $_ })
+
+            $acceptedRoles = @(
+                "Global Administrator",
+                "Application Administrator",
+                "Cloud Application Administrator"
+            )
+
+            $matchedRoles = @($roleNames | Where-Object { $acceptedRoles -contains $_ })
+            if ($matchedRoles.Count -gt 0) {
+                return @{ Ok = $true; Detail = "Permisos Entra validados por rol de directorio: $($matchedRoles -join ', ')" }
+            }
+        } catch {
+        }
+    }
+
+    return @{ Ok = $false; Detail = "No puede consultar/gestionar App Registrations en Entra ID. Comprueba rol activo (Global/Application/Cloud Application Administrator), PIM y políticas Graph/consent." }
 }
 
 function Assert-InfraPrerequisites {
     param(
-        [string]$ForScript = "infra"
+        [string]$ForScript = "infra",
+        [bool]$ShowValidationSection = $true
     )
 
-    Write-Host "`n$("="*60)" -ForegroundColor Magenta
-    Write-Host " VALIDACIÓN PREVIA DE PERMISOS" -ForegroundColor Magenta
-    Write-Host $("="*60) -ForegroundColor Magenta
-    Write-Info "Script objetivo: $ForScript"
+    if ($env:SKIP_INFRA_PREREQS -eq "1") {
+        if ($script:SubscriptionId) {
+            az account set --subscription $script:SubscriptionId --output none 1>$null 2>$null
+        }
 
-    Ensure-AzureCliInstalled
-    $account = Ensure-AzureSession
-    Test-RequiredRbacRoles -Account $account
-    Test-EntraAppPermissions
+        $fastAccount = az account show --output json 2>$null | ConvertFrom-Json
+        if (-not $fastAccount) {
+            Write-Error "No hay sesión activa de Azure para continuar en modo rápido."
+            exit 1
+        }
 
-    Write-Host "`n$("-"*60)" -ForegroundColor Gray
-    Write-Host " CONTEXTO ACTIVO" -ForegroundColor Yellow
-    Write-Host $("-"*60) -ForegroundColor Gray
+        Write-Info "Validación de permisos omitida (modo deploy-all)."
+        return $fastAccount
+    }
+
+    if ($ShowValidationSection) {
+        Write-Host "`n$("="*60)" -ForegroundColor Cyan
+        Write-Host " VALIDACIÓN DE PRERREQUISITOS" -ForegroundColor Cyan
+        Write-Host $("="*60) -ForegroundColor Cyan
+    }
+
+    $cliCheck = Ensure-AzureCliInstalled
+    if ($cliCheck.Ok) {
+        Write-Success $cliCheck.Detail
+    } else {
+        Write-Error $cliCheck.Detail
+    }
+
+    if ($script:SubscriptionId) {
+        Write-Step "Estableciendo subscription:"
+        az account set --subscription $script:SubscriptionId --output none 1>$null 2>$null
+        if ($LASTEXITCODE -eq 0) {
+            Write-Success "Subscripción establecida en: $($script:SubscriptionId)"
+        } else {
+            Write-Error "No se pudo establecer la subscription '$($script:SubscriptionId)'"
+            exit 1
+        }
+    }
+
+    Write-Step "Verificando sesión de Azure..."
+    $sessionCheck = Ensure-AzureSession -CliCheck $cliCheck
+    if ($sessionCheck.Ok) {
+        $account = $sessionCheck.Account
+        Write-Success "Sesión activa"
+        Write-Endpoint "Usuario" $account.user.name
+        Write-Endpoint "Tenant" $account.tenantId
+    } else {
+        Write-Error "Sesión de Azure no válida"
+        Write-Info $sessionCheck.Detail
+        $account = $null
+    }
+
+    Write-Step "Validando permisos RBAC para despliegue de infraestructura..."
+    if ($account) {
+        $rbacCheck = Test-RequiredRbacRoles -Account $account
+    } else {
+        $rbacCheck = @{
+            ResourceRoleOk    = $false
+            RoleAssignRoleOk  = $false
+            DetailResource    = "No evaluado por falta de sesión"
+            DetailAssign      = "No evaluado por falta de sesión"
+            SubscriptionScope = ""
+        }
+    }
+
+    if ($rbacCheck.ResourceRoleOk) {
+        Write-Success "Permisos RBAC de despliegue validados"
+    } else {
+        Write-Error "Permisos RBAC de despliegue insuficientes"
+        Write-Info $rbacCheck.DetailResource
+    }
+
+    if ($ForScript -eq "05-webapp-m365.ps1") {
+        if ($rbacCheck.RoleAssignRoleOk) {
+            Write-Success "Permisos RBAC para asignación de roles validados"
+        } else {
+            Write-Error "Permisos RBAC para asignación de roles insuficientes"
+            Write-Info $rbacCheck.DetailAssign
+        }
+    }
+
+    Write-Step "Validando permisos de Entra ID para App Registration..."
+    $entraCheck = Test-EntraAppPermissions
+
+    if ($entraCheck.Ok) {
+        Write-Success "Permisos de Entra ID para App Registration validados"
+    } else {
+        Write-Error "Permisos de Entra ID para App Registration insuficientes"
+        Write-Info $entraCheck.Detail
+    }
+
+    $requiredChecks = @(
+        @{ Name = "Azure CLI"; Ok = $cliCheck.Ok; Detail = $cliCheck.Detail },
+        @{ Name = "Sesión Azure + subscription"; Ok = $sessionCheck.Ok; Detail = $sessionCheck.Detail }
+    )
+
+    if ($ForScript -eq "03-m365-service-principal.ps1") {
+        $requiredChecks += @{ Name = "Entra App Registration"; Ok = $entraCheck.Ok; Detail = $entraCheck.Detail }
+    }
+    else {
+        $requiredChecks += @{ Name = "RBAC despliegue (Owner/Contributor)"; Ok = $rbacCheck.ResourceRoleOk; Detail = $rbacCheck.DetailResource }
+    }
+
+    if ($ForScript -eq "05-webapp-m365.ps1") {
+        $requiredChecks += @{ Name = "RBAC asignación de roles (Owner/UAA/RBAC Admin)"; Ok = $rbacCheck.RoleAssignRoleOk; Detail = $rbacCheck.DetailAssign }
+    }
+
+    $failedChecks = @($requiredChecks | Where-Object { -not $_.Ok })
+
+    if ($failedChecks.Count -gt 0) {
+        Write-Host "`n$("="*60)" -ForegroundColor Red
+        Write-Host " VALIDACIÓN FALLIDA - EJECUCIÓN BLOQUEADA" -ForegroundColor Red
+        Write-Host $("="*60) -ForegroundColor Red
+        Write-Info "Faltan prerrequisitos para '$ForScript':"
+        $failedChecks | ForEach-Object {
+            Write-Host "    - $($_.Name)" -ForegroundColor Red
+            Write-Info "Detalle: $($_.Detail)"
+        }
+        Write-Info "Corrige los permisos antes de ejecutar cambios de infraestructura."
+
+        if ($rbacCheck.SubscriptionScope) {
+            Write-Info "Ejemplo RBAC despliegue: az role assignment create --assignee <OBJETO_O_UPN> --role Contributor --scope $($rbacCheck.SubscriptionScope)"
+            Write-Info "Ejemplo RBAC asignación: az role assignment create --assignee <OBJETO_O_UPN> --role \"User Access Administrator\" --scope $($rbacCheck.SubscriptionScope)"
+        }
+        exit 1
+    }
+
     Write-Endpoint "Subscription ID" $account.id
-    Write-Endpoint "Subscription Name" $account.name
     Write-Endpoint "Tenant" $account.tenantId
-    Write-Endpoint "Región objetivo" $script:Location
-
-    Write-Host "`n$("="*60)" -ForegroundColor Green
-    Write-Host " VALIDACIÓN COMPLETADA" -ForegroundColor Green
-    Write-Host $("="*60) -ForegroundColor Green
-    Write-Host ""
 
     return $account
 }

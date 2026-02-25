@@ -9,6 +9,16 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\auth-permissions-helper.ps1"
 . "$scriptPath\env-generated-helper.ps1"
 
+Write-Host ""
+Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║                  OBJETIVO DEL SCRIPT                         ║" -ForegroundColor Cyan
+Write-Host "╠══════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  1) Crear/reutilizar App Service Plan y Web App              " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  2) Habilitar Managed Identity y asignar rol OpenAI User     " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  3) Aplicar configuración de runtime y app settings          " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  4) Persistir WEB_APP_NAME en .env.generated                 " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+
 function Get-RepoRoot {
     return Split-Path -Parent (Split-Path -Parent $scriptPath)
 }
@@ -28,15 +38,6 @@ function Parse-DotEnvFile {
         }
     }
     return $result
-}
-
-function Confirm-EnvCopyReady {
-    Write-Warning "Asegúrate de haber copiado '.env.generated' como '.env' antes de continuar."
-    $confirmation = Read-Host "Confirma continuación (y/Y)"
-    if ($confirmation -notin @("y", "Y")) {
-        Write-Host "Operación cancelada por el usuario." -ForegroundColor Yellow
-        exit 1
-    }
 }
 
 function Assert-AzSuccess {
@@ -163,12 +164,6 @@ function Ensure-WebAppManagedIdentityAndOpenAIRole {
     }
 }
 
-Write-Host "`n$('='*60)" -ForegroundColor Cyan
-Write-Host " APP SERVICE M365 - CREACIÓN/CONFIGURACIÓN" -ForegroundColor Cyan
-Write-Host $('='*60) -ForegroundColor Cyan
-
-Confirm-EnvCopyReady
-
 $null = Assert-InfraPrerequisites -ForScript "05-webapp-m365.ps1"
 
 $webAppLocation = if ($script:WebAppLocation) { $script:WebAppLocation } else { "spaincentral" }
@@ -178,6 +173,20 @@ $appServicePlanSku = if ($script:AppServicePlanSku) { $script:AppServicePlanSku 
 
 $repoRoot = Get-RepoRoot
 $envPath = Join-Path $repoRoot ".env"
+$envGeneratedPath = Join-Path $repoRoot ".env.generated"
+
+$isDeployAllFlow = ($env:RUNNING_FROM_DEPLOY_ALL -eq "1")
+if (-not $isDeployAllFlow) {
+    Write-Host "" 
+    Write-Host "[WARN] Ejecución directa detectada para 05-webapp-m365.ps1." -ForegroundColor Yellow
+    Write-Host "[WARN] Antes de continuar, copia .env.generated a .env en la raíz del proyecto." -ForegroundColor Yellow
+    Write-Host "[WARN] Cuando termines, confirma para continuar." -ForegroundColor Yellow
+    $confirmation = Read-Host "Confirma que ya copiaste .env.generated -> .env (y/Y)"
+    if ($confirmation -notin @("y", "Y")) {
+        Write-Host "Operación cancelada por el usuario." -ForegroundColor Yellow
+        exit 1
+    }
+}
 
 if (-not (Test-Path $envPath)) {
     Write-Error "No existe .env en la raíz del proyecto: $envPath"
@@ -226,6 +235,11 @@ if ($rgExists -eq "false") {
     Write-Host "Ejecuta primero: .\01-resource-group.ps1" -ForegroundColor Yellow
     exit 1
 }
+Write-Success "Resource Group validado"
+
+Write-Host "`n$('='*60)" -ForegroundColor Cyan
+Write-Host " APP SERVICE M365 - CREACIÓN/CONFIGURACIÓN" -ForegroundColor Cyan
+Write-Host $('='*60) -ForegroundColor Cyan
 
 Write-Step "Creando/validando App Service Plan '$appServicePlanName' ($webAppLocation)..."
 $planExists = az appservice plan show --resource-group $script:ResourceGroupName --name $appServicePlanName --output json 2>$null
@@ -293,28 +307,17 @@ az webapp config set `
     --startup-file "python main.py" `
     --output none
 Assert-AzSuccess -Message "No se pudo configurar runtime/startup en '$webAppName'."
+Write-Success "Configuración de runtime aplicada"
 
 $defaultHostName = az webapp show --resource-group $script:ResourceGroupName --name $webAppName --query defaultHostName --output tsv
 Assert-AzSuccess -Message "No se pudo obtener el hostname de '$webAppName'."
 $webAppUrl = "https://$defaultHostName/api/messages"
 
-$envGeneratedPath = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "05-webapp-m365.ps1" -SectionValues @{
+$null = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "05-webapp-m365.ps1" -SectionValues @{
     WEB_APP_NAME = $webAppName
 }
 
 Write-Host "`n$('-'*60)" -ForegroundColor Gray
-Write-Host " APP SERVICE INFO" -ForegroundColor Yellow
+Write-Host " ACTUALIZACIÓN DE .env.generated" -ForegroundColor Yellow
 Write-Host $('-'*60) -ForegroundColor Gray
-Write-Endpoint "Web App Name" $webAppName
-Write-Endpoint "App Service Plan" $appServicePlanName
-Write-Endpoint "Plan SKU" $appServicePlanSku
-Write-Endpoint "Location" $webAppLocation
-Write-Endpoint "Startup Command" "python main.py"
-Write-Endpoint "Endpoint" $webAppUrl
-Write-Endpoint "Config source" ".env"
-Write-Endpoint ".env.generated" $envGeneratedPath
-
-Write-Host "`n$('='*60)" -ForegroundColor Green
-Write-Host " APP SERVICE M365 LISTA" -ForegroundColor Green
-Write-Host $('='*60) -ForegroundColor Green
-Write-Host ""
+Write-Endpoint "WEB_APP_NAME" $webAppName

@@ -9,6 +9,16 @@ $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\auth-permissions-helper.ps1"
 . "$scriptPath\env-generated-helper.ps1"
 
+Write-Host ""
+Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Cyan
+Write-Host "║                  OBJETIVO DEL SCRIPT                         ║" -ForegroundColor Cyan
+Write-Host "╠══════════════════════════════════════════════════════════════╣" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  1) Validar Resource Group para observabilidad               " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  2) Crear/reutilizar Log Analytics Workspace                 " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  3) Crear/reutilizar Application Insights                    " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host -NoNewline "║" -ForegroundColor Cyan; Write-Host -NoNewline "  4) Persistir variables de observabilidad en .env.generated  " -ForegroundColor White; Write-Host "║" -ForegroundColor Cyan
+Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Cyan
+
 
 function Get-LocationToken {
     param([string]$Location)
@@ -84,10 +94,6 @@ function Find-AvailableAppInsightsName {
 }
 
 
-Write-Host "`n$('='*60)" -ForegroundColor Cyan
-Write-Host " OBSERVABILIDAD - LOG ANALYTICS + APP INSIGHTS" -ForegroundColor Cyan
-Write-Host $('='*60) -ForegroundColor Cyan
-
 $account = Assert-InfraPrerequisites -ForScript "04-observability.ps1"
 
 $observabilityLocation = $script:Location
@@ -107,6 +113,11 @@ if ($rgExists -eq "false") {
     Write-Host "Ejecuta primero: .\01-resource-group.ps1" -ForegroundColor Yellow
     exit 1
 }
+Write-Success "Resource Group validado"
+
+Write-Host "`n$('='*60)" -ForegroundColor Cyan
+Write-Host " OBSERVABILIDAD - LOG ANALYTICS + APP INSIGHTS" -ForegroundColor Cyan
+Write-Host $('='*60) -ForegroundColor Cyan
 
 Write-Step "Resolviendo Log Analytics Workspace '$lawName'..."
 $lawJson = az monitor log-analytics workspace show `
@@ -139,6 +150,7 @@ if ($lawResource) {
         Write-Success "Log Analytics Workspace alternativo creado"
     }
 } else {
+    Write-Success "Log Analytics Workspace no existente (se procederá a crear)"
     Write-Step "Creando Log Analytics Workspace '$lawName' en '$observabilityLocation'..."
     az monitor log-analytics workspace create `
         --resource-group $script:ResourceGroupName `
@@ -146,8 +158,10 @@ if ($lawResource) {
         --location $observabilityLocation `
         --retention-time 30 `
         --output none
+    Write-Success "Log Analytics Workspace creado"
 }
 
+Write-Step "Verificando disponibilidad de Log Analytics Workspace '$lawEffectiveName'..."
 $workspaceId = az monitor log-analytics workspace show `
     --resource-group $script:ResourceGroupName `
     --workspace-name $lawEffectiveName `
@@ -194,6 +208,7 @@ if ($appiResource) {
         Write-Success "Application Insights alternativo creado"
     }
 } else {
+    Write-Success "Application Insights no existente (se procederá a crear)"
     Write-Step "Creando Application Insights '$appInsightsName' vinculado a Log Analytics..."
     az monitor app-insights component create `
         --app $appiEffectiveName `
@@ -203,6 +218,7 @@ if ($appiResource) {
         --application-type web `
         --kind web `
         --output none
+    Write-Success "Application Insights creado"
 }
 
 $connectionString = az monitor app-insights component show `
@@ -216,7 +232,7 @@ if ([string]::IsNullOrWhiteSpace($connectionString)) {
     exit 1
 }
 
-$envPath = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "04-observability.ps1" -SectionValues @{
+$null = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "04-observability.ps1" -SectionValues @{
     APPLICATIONINSIGHTS_CONNECTION_STRING = $connectionString
     ENABLE_OBSERVABILITY                  = "true"
     ENABLE_A365_OBSERVABILITY_EXPORTER    = "false"
@@ -225,22 +241,10 @@ $envPath = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "04-o
 }
 
 Write-Host "`n$('-'*60)" -ForegroundColor Gray
-Write-Host " OBSERVABILITY VARIABLES" -ForegroundColor Yellow
+Write-Host " ACTUALIZACIÓN DE .env.generated" -ForegroundColor Yellow
 Write-Host $('-'*60) -ForegroundColor Gray
 Write-Endpoint "APPLICATIONINSIGHTS_CONNECTION_STRING" "(configurada en .env.generated)"
 Write-Endpoint "ENABLE_OBSERVABILITY" "true"
 Write-Endpoint "ENABLE_A365_OBSERVABILITY_EXPORTER" "false"
 Write-Endpoint "OTEL_SERVICE_NAME" $otelServiceName
 Write-Endpoint "OTEL_SERVICE_NAMESPACE" $otelServiceNamespace
-Write-Endpoint "OTEL_SOURCE" "lab-config.ps1"
-Write-Endpoint "Log Analytics Workspace" $lawEffectiveName
-Write-Endpoint "Application Insights" $appiEffectiveName
-Write-Endpoint "Requested Location" $observabilityLocation
-Write-Endpoint "LAW Effective Location" $lawEffectiveLocation
-Write-Endpoint "AppInsights Effective Location" $appiEffectiveLocation
-Write-Endpoint ".env.generated" $envPath
-
-Write-Host "`n$('='*60)" -ForegroundColor Green
-Write-Host " OBSERVABILIDAD LISTA" -ForegroundColor Green
-Write-Host $('='*60) -ForegroundColor Green
-Write-Host ""
