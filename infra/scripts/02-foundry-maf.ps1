@@ -5,7 +5,10 @@
 $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
+. "$scriptPath\auth-permissions-helper.ps1"
 . "$scriptPath\env-generated-helper.ps1"
+
+$account = Assert-InfraPrerequisites -ForScript "02-foundry-maf.ps1"
 
 $framework = "MAF"
 $foundryName = $script:FoundryName
@@ -21,9 +24,6 @@ if ($rgExists -eq "false") {
     Write-Host "Ejecuta primero: .\01-resource-group.ps1" -ForegroundColor Yellow
     exit 1
 }
-
-# Obtener cuenta para usar subscription en llamadas REST
-$account = az account show --output json | ConvertFrom-Json
 
 # ============================================================================
 # 1. Recurso Foundry (AIServices)

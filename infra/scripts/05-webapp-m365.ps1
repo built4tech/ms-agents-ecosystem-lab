@@ -6,6 +6,7 @@
 $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
+. "$scriptPath\auth-permissions-helper.ps1"
 . "$scriptPath\env-generated-helper.ps1"
 
 function Get-RepoRoot {
@@ -27,22 +28,6 @@ function Parse-DotEnvFile {
         }
     }
     return $result
-}
-
-function Ensure-AzureSession {
-    $account = az account show --output json 2>$null | ConvertFrom-Json
-    if (-not $account) {
-        Write-Info "No hay sesión activa. Iniciando login..."
-        az login --output none
-        $account = az account show --output json | ConvertFrom-Json
-    }
-
-    if ($script:SubscriptionId) {
-        az account set --subscription $script:SubscriptionId
-        $account = az account show --output json | ConvertFrom-Json
-    }
-
-    return $account
 }
 
 function Confirm-EnvCopyReady {
@@ -184,7 +169,7 @@ Write-Host $('='*60) -ForegroundColor Cyan
 
 Confirm-EnvCopyReady
 
-$null = Ensure-AzureSession
+$null = Assert-InfraPrerequisites -ForScript "05-webapp-m365.ps1"
 
 $webAppLocation = if ($script:WebAppLocation) { $script:WebAppLocation } else { "spaincentral" }
 $webAppName = if ($script:WebAppName) { $script:WebAppName } else { "wapp-agent-identities-viewer" }

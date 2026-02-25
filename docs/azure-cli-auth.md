@@ -146,6 +146,8 @@ cd infra/scripts
 .\deploy-all.ps1
 ```
 
+`deploy-all.ps1` lanza `auth-permissions-helper.ps1` como validación previa obligatoria de sesión y permisos para despliegue.
+
 ### Escenario 2: Ejecutar código como usuario normal
 
 ```powershell

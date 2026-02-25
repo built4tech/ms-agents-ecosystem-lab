@@ -5,7 +5,10 @@
 $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
+. "$scriptPath\auth-permissions-helper.ps1"
 . "$scriptPath\env-generated-helper.ps1"
+
+$account = Assert-InfraPrerequisites -ForScript "01-resource-group.ps1"
 
 Write-Host "`n$("="*60)" -ForegroundColor Magenta
 Write-Host " CREACIÓN DE RESOURCE GROUP" -ForegroundColor Magenta
@@ -37,7 +40,6 @@ Write-Host " RESOURCE GROUP INFO" -ForegroundColor Yellow
 Write-Host $("-"*60) -ForegroundColor Gray
 
 $rgInfo = az group show --name $script:ResourceGroupName --output json | ConvertFrom-Json
-$account = az account show --output json | ConvertFrom-Json
 
 $envPath = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "01-resource-group.ps1" -SectionValues @{
     AZURE_SUBSCRIPTION_ID = $account.id

@@ -26,6 +26,8 @@ Set-Location .\infra\scripts
 .\deploy-all.ps1
 ```
 
+`deploy-all.ps1` ejecuta primero `auth-permissions-helper.ps1` para validar sesión y permisos antes de crear recursos.
+
 ---
 
 ## 1) Prueba CLI local (primero)
@@ -175,6 +177,8 @@ Set-Location c:/Users/carlosmu/Documents/code/ms-agents-ecosystem-lab/infra/scri
 .\03-m365-service-principal.ps1
 .\04-observability.ps1
 ```
+
+Nota: cada script (`01` a `05`) invoca automáticamente `auth-permissions-helper.ps1` y detiene la ejecución si faltan permisos.
 
 Copia manual obligatoria para que `05-webapp-m365.ps1` lea desde `.env`:
 

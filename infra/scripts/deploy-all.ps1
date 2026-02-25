@@ -21,7 +21,7 @@ $startTime = Get-Date
 # 2) completar secciones 03 y 04 en .env.generated,
 # 3) copiar manualmente .env.generated a .env.
 $scripts = @(
-    @{ Name = "00-auth.ps1"; Description = "Verificar autenticación" },
+    @{ Name = "auth-permissions-helper.ps1"; Description = "Validar permisos de despliegue" },
     @{ Name = "01-resource-group.ps1"; Description = "Crear Resource Group" },
     @{ Name = "02-foundry-maf.ps1"; Description = "Crear Foundry MAF (AIServices)" }
 )

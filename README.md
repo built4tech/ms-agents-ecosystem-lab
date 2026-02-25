@@ -22,7 +22,7 @@ Runbooks históricos conservados para revisión:
 
 ## Objetivos
 1. Probar rápidamente un entorno MAF completo en Azure AI Foundry.
-2. Ejecutar ejemplos incrementales (simple chat y extensiones de canal M365) sobre un único recurso Foundry.
+2. Ejecutar ejemplos incrementales (simple chat y extensiones de canal M365) sobre un único recurso de Azure AI Foundry.
 3. Mantener scripts de infraestructura mínimos y reproducibles.
 
 ## Estado de alcance (2026-02-24)
@@ -44,7 +44,7 @@ ms-agents-ecosystem-lab/
 │   ├── config/
 │   │   └── lab-config.ps1
 │   └── scripts/
-│       ├── 00-auth.ps1
+│       ├── auth-permissions-helper.ps1
 │       ├── 01-resource-group.ps1
 │       ├── 02-foundry-maf.ps1
 │       ├── deploy-all.ps1
@@ -71,7 +71,8 @@ ms-agents-ecosystem-lab/
 ### 1. Requisitos previos
 - Azure CLI instalada (no requiere extensión ML)
 - Python 3.10+
-- Rol Contributor en la subscription de Azure
+- Permisos RBAC para crear recursos (Contributor u Owner)
+- Permiso para asignación de roles cuando aplique (`Owner`, `User Access Administrator` o `Role Based Access Control Administrator`)
 
 ### 1.1 Requisito opcional (altamente recomendado): Node.js + npm
 
@@ -114,7 +115,7 @@ Uso recomendado:
 ### 2. Autenticación
 ```powershell
 az login --tenant <tu-tenant>
-az account show --query "{Usuario:user.name, Subscription:name}" --output table
+az account show --query "{Usuario:user.name, Suscripcion:name}" --output table
 ```
 Si manejas múltiples cuentas, revisa [docs/azure-cli-auth.md](docs/azure-cli-auth.md).
 
@@ -185,7 +186,7 @@ Endpoint local:
 
 ```
 Resource Group: rg-agents-lab
-└── Foundry (AIServices): foundry-maf-lab
+└── Azure AI Foundry (AIServices): foundry-maf-lab
     ├── Proyecto de agentes: foundry-maf-lab-project
     └── Deployment: gpt-4o-mini
 ```

@@ -1,40 +1,42 @@
 # Infraestructura - MS Agents Ecosystem Lab
 
-Scripts de PowerShell para desplegar y gestionar el proyecto **Foundry (AIServices) para MAF**.
+Scripts de PowerShell para desplegar y gestionar el proyecto **Azure AI Foundry (AIServices) para MAF**.
 
 ## Arquitectura
 
 ```
 Resource Group: rg-agents-lab
-└── Foundry (AIServices): foundry-maf-lab
+└── Azure AI Foundry (AIServices): foundry-maf-lab
     ├── Proyecto de agentes: foundry-maf-lab-project
     └── Deployment: gpt-4o-mini
 
-Recursos asociados al recurso Foundry: cuenta AIServices y su proyecto de agentes.
+Recursos asociados al recurso de Azure AI Foundry: cuenta AIServices y su proyecto de agentes.
 ```
 
 ## Requisitos previos
 - Azure CLI instalado (no requiere extensión ML, necesaria para Azure OpenAI Hubs pero no para proyectos de Foundry)
-- Permisos de Contributor en la subscription
+- Permisos RBAC para desplegar recursos (Contributor u Owner) y para asignar roles administrados (Owner, User Access Administrator o Role Based Access Control Administrator)
 - Cuota disponible para `gpt-4o-mini` en `eastus2`
 
-## Autenticación
+## Sesión de Azure
 ```powershell
 az login
 az account set --subscription "<subscription-id>"   # opcional
 az account show
 ```
 
+El helper `auth-permissions-helper.ps1` se invoca automáticamente desde `01` a `05` (y desde `deploy-all.ps1`) para validar sesión y permisos antes de continuar.
+
 ## Scripts disponibles
 | Script | Descripción |
 |--------|-------------|
-| `00-auth.ps1` | Verifica autenticación y subscription activa |
+| `auth-permissions-helper.ps1` | Helper reutilizable que valida sesión activa, suscripción y permisos mínimos de RBAC/Entra para despliegue |
 | `01-resource-group.ps1` | Crea el Resource Group compartido |
 | `02-foundry-maf.ps1` | Crea la cuenta Foundry, proyecto y deployment para MAF |
 | `03-m365-service-principal.ps1` | Crea App Registration + Service Principal multitenant y actualiza `MICROSOFT_APP_*` en `.env.generated` |
 | `04-observability.ps1` | Crea Log Analytics + Application Insights y actualiza variables OTel/App Insights en `.env.generated` |
 | `05-webapp-m365.ps1` | Crea App Service (plan + web app) para el runtime M365 en región configurable y carga App Settings desde `.env.generated` |
-| `deploy-all.ps1` | Ejecuta autenticación, RG y Foundry MAF en orden |
+| `deploy-all.ps1` | Ejecuta validación de permisos, RG y Foundry MAF en orden |
 | `destroy-all.ps1` | Elimina el RG y purga soft-delete de la Foundry |
 
 ## Uso rápido

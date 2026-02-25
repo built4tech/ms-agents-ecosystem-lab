@@ -47,6 +47,8 @@ Set-Location .\infra\scripts
 .\deploy-all.ps1
 ```
 
+`deploy-all.ps1` ejecuta `auth-permissions-helper.ps1` al inicio para validar login, subscription y permisos RBAC/Entra antes de continuar.
+
 ---
 
 ## 1) Variables operativas recomendadas
@@ -258,6 +260,8 @@ Set-Location c:/Users/carlosmu/Documents/code/ms-agents-ecosystem-lab/infra/scri
 .\03-m365-service-principal.ps1
 .\04-observability.ps1
 ```
+
+Nota: los scripts `01` a `05` invocan automáticamente `auth-permissions-helper.ps1` y paran la ejecución cuando faltan permisos requeridos.
 
 ```powershell
 Set-Location c:/Users/carlosmu/Documents/code/ms-agents-ecosystem-lab

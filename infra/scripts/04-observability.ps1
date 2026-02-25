@@ -6,23 +6,8 @@
 $ErrorActionPreference = "Stop"
 $scriptPath = Split-Path -Parent $MyInvocation.MyCommand.Path
 . "$scriptPath\..\config\lab-config.ps1"
+. "$scriptPath\auth-permissions-helper.ps1"
 . "$scriptPath\env-generated-helper.ps1"
-
-function Ensure-AzureSession {
-    $account = az account show --output json 2>$null | ConvertFrom-Json
-    if (-not $account) {
-        Write-Info "No hay sesión activa. Iniciando login..."
-        az login --output none
-        $account = az account show --output json | ConvertFrom-Json
-    }
-
-    if ($script:SubscriptionId) {
-        az account set --subscription $script:SubscriptionId
-        $account = az account show --output json | ConvertFrom-Json
-    }
-
-    return $account
-}
 
 
 function Get-LocationToken {
@@ -103,7 +88,7 @@ Write-Host "`n$('='*60)" -ForegroundColor Cyan
 Write-Host " OBSERVABILIDAD - LOG ANALYTICS + APP INSIGHTS" -ForegroundColor Cyan
 Write-Host $('='*60) -ForegroundColor Cyan
 
-$account = Ensure-AzureSession
+$account = Assert-InfraPrerequisites -ForScript "04-observability.ps1"
 
 $observabilityLocation = $script:Location
 if ($script:ObservabilityLocation -and $script:ObservabilityLocation -ne $script:Location) {
