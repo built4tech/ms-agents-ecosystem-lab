@@ -1,0 +1,41 @@
+debug Telemetry: agents-playground-cli/cliStart {"cleanProperties":{"isExec":"false","argv":"<REDACTED: user-file-path>,<REDACTED: user-file-path>,start,-e,https:<REDACTED: user-file-path>~<REDACTED: credential>,--tid,ee50c20d-8d3a-46cb-95a9-4b25a790db5c"}}
+
+log Listening on 56150
+log Microsoft 365 Agents Playground is being launched for you to debug the app: http://localhost:56150
+debug Telemetry: agents-playground-server/configAuth {"cleanProperties":{"authConfig":"{\"clientId\":\"188b583e-ab56-4c5c-8ce1-984be134310d\",\"clientSecret\":\"8.<REDACTED: credential>\",\"tenantId\":\"ee50c20d-8d3a-46cb-95a9-4b25a790db5c\"}"}}
+
+debug started web socket client
+debug started web socket client
+log Waiting for connection of endpoint: https://wapp-agent-identities-viewer.azurewebsites.net/api/messages
+log waiting for 1 resources: https://wapp-agent-identities-viewer.azurewebsites.net/api/messages
+log wait-on(65896) complete
+log Authentication enabled, client ID: 188b583e-ab56-4c5c-8ce1-984be134310d, tenant ID: ee50c20d-8d3a-46cb-95a9-4b25a790db5c.
+log Events recording disabled.
+debug Telemetry: agents-playground-server/eventsRecording {"cleanProperties":{"enabled":"false"}}
+
+log Using delivery mode: expectReplies.
+debug Telemetry: agents-playground-server/deliveryMode {"cleanProperties":{"deliveryMode":"expectReplies"}}
+
+debug Telemetry: agents-playground-server/getConfig {"cleanProperties":{"internalConfig":"{\"locale\":\"en-US\",\"localTimezone\":\"Europe/Madrid\",\"channelId\":\"msteams\",\"authConfig\":{\"clientId\":\"188b583e-ab56-4c5c-8ce1-984be134310d\",\"clientSecret\":\"<REDACTED: credential>/0eDxGZCnR/tozZNZIV+<REDACTED: credential>==\",\"tenantId\":\"ee50c20d-8d3a-46cb-95a9-4b25a790db5c\"},\"debugConfig\":{\"eventsRecordingEnabled\":false,\"deliveryMode\":\"expectReplies\"}}"}}
+
+debug Telemetry: agents-playground-server/sendActivity {"cleanProperties":{"activityType":"conversationUpdate","conversationId":"b1d901e9-5f96-46e3-96ec-facc65261363","headers":"{\"Authorization\":\"Bearer <REDACTED: credential>.<REDACTED: credential>.<REDACTED: credential>\",\"x-ms-agents-playground\":\"true\"}"}}
+
+debug Telemetry: agents-playground-server/sendActivity {"cleanProperties":{"activityType":"installationUpdate","conversationId":"b1d901e9-5f96-46e3-96ec-facc65261363","headers":"{\"Authorization\":\"Bearer <REDACTED: credential>.<REDACTED: credential>.<REDACTED: credential>\",\"x-ms-agents-playground\":\"true\"}"}}
+
+warn ApplicationInsights:Instrumentation key was invalid, please check the iKey []
+warn ApplicationInsights:Instrumentation key was invalid, please check the iKey []
+debug Telemetry: agents-playground-server/sendActivity {"cleanProperties":{"activityType":"message","conversationId":"b1d901e9-5f96-46e3-96ec-facc65261363","headers":"{\"Authorization\":\"Bearer <REDACTED: credential>.<REDACTED: credential>.<REDACTED: credential>\",\"x-ms-agents-playground\":\"true\"}"}}
+
+debug Telemetry: agents-playground-server/sendActivity {"cleanProperties":{"activityType":"message","conversationId":"b1d901e9-5f96-46e3-96ec-facc65261363","headers":"{\"Authorization\":\"Bearer <REDACTED: credential>.<REDACTED: credential>.<REDACTED: credential>\",\"x-ms-agents-playground\":\"true\"}"}}
+
+debug Telemetry: agents-playground-server/sendActivity {"cleanProperties":{"activityType":"message","conversationId":"b1d901e9-5f96-46e3-96ec-facc65261363","headers":"{\"Authorization\":\"Bearer <REDACTED: credential>.<REDACTED: credential>.<REDACTED: credential>\",\"x-ms-agents-playground\":\"true\"}"}}
+
+warn ApplicationInsights:Instrumentation key was invalid, please check the iKey []
+debug Telemetry: agents-playground-server/sendActivity {"cleanProperties":{"activityType":"message","conversationId":"b1d901e9-5f96-46e3-96ec-facc65261363","headers":"{\"Authorization\":\"Bearer <REDACTED: credential>.<REDACTED: credential>.<REDACTED: credential>\",\"x-ms-agents-playground\":\"true\"}"}}
+
+debug Telemetry: agents-playground-server/sendActivity {"cleanProperties":{"activityType":"message","conversationId":"b1d901e9-5f96-46e3-96ec-facc65261363","headers":"{\"Authorization\":\"Bearer <REDACTED: credential>.<REDACTED: credential>.<REDACTED: credential>\",\"x-ms-agents-playground\":\"true\"}"}}
+
+debug stopping web socket client
+debug stopping web socket client
+warn ApplicationInsights:Instrumentation key was invalid, please check the iKey []
+warn ApplicationInsights:Instrumentation key was invalid, please check the iKey []

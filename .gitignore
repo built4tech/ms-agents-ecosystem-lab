@@ -30,6 +30,7 @@ Thumbs.db
 
 # Build/debug artifacts under dist (keep only source tooling/assets)
 dist/a365
+dist/deploy/*
 
 
 
