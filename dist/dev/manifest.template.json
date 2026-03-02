@@ -1,15 +1,13 @@
 {
-  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.17/MicrosoftTeams.schema.json",
-  "manifestVersion": "1.17",
+  "$schema": "https://developer.microsoft.com/en-us/json-schemas/teams/v1.21/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.21",
   "version": "1.0.0",
   "id": "00000000-0000-0000-0000-000000000000",
-  "packageName": "com.msagents.ecosystemlab.agentidentityviewer",
   "developer": {
     "name": "Carlos Munoz",
     "websiteUrl": "https://aka.ms",
     "privacyUrl": "https://privacy.microsoft.com/privacystatement",
-    "termsOfUseUrl": "https://www.microsoft.com/servicesagreement",
-    "mpnId": "carlosmu@microsoft.com"
+    "termsOfUseUrl": "https://www.microsoft.com/servicesagreement"
   },
   "name": {
     "short": "Agent Identity Viewer",
@@ -28,14 +26,16 @@
     {
       "botId": "00000000-0000-0000-0000-000000000000",
       "scopes": [
-        "personal"
+        "personal",
+        "team"
       ],
       "supportsFiles": false,
       "isNotificationOnly": false,
       "commandLists": [
         {
           "scopes": [
-            "personal"
+            "personal",
+            "team"
           ],
           "commands": [
             {
@@ -51,6 +51,14 @@
       ]
     }
   ],
+  "copilotAgents": {
+    "customEngineAgents": [
+      {
+        "type": "bot",
+        "id": "00000000-0000-0000-0000-000000000000"
+      }
+    ]
+  },
   "permissions": [
     "identity",
     "messageTeamMembers"

@@ -1,11 +1,11 @@
 param(
     [string]$EnvironmentFile = "../../.env",
     [string]$TemplateFile = "./manifest.template.json",
-    [string]$OutputFolder = "../../dist/m365-manifest",
+    [string]$OutputFolder = "../../dist/deploy/m365",
     [string]$PackageVersion = "1.0.0",
-    [string]$ColorIconFile = "../../dist/m365-manifest/staging/color.png",
-    [string]$OutlineIconFile = "../../dist/m365-manifest/staging/outline.png",
-    [string]$DeployOutputFolder = "../../dist/deploy",
+    [string]$ColorIconFile = "./assets/color.png",
+    [string]$OutlineIconFile = "./assets/outline.png",
+    [string]$DeployOutputFolder = "../../dist/deploy/webapp",
     [string]$WebAppName = "",
     [string]$ResourceGroup = "",
     [switch]$SkipWebAppDeploy
@@ -64,6 +64,12 @@ function Ensure-PathExists([string]$path, [string]$label) {
     }
 }
 
+function Ensure-Directory([string]$path) {
+    if (-not (Test-Path -LiteralPath $path)) {
+        New-Item -ItemType Directory -Path $path -Force | Out-Null
+    }
+}
+
 function Assert-AzSuccess([string]$message) {
     if ($LASTEXITCODE -ne 0) {
         throw $message
@@ -99,8 +105,9 @@ function To-Slug([string]$value) {
 
 $envFilePath = Resolve-ModulePath $EnvironmentFile
 $templatePath = Resolve-ModulePath $TemplateFile
-$outputPath = Resolve-ModulePath $OutputFolder
-$manifestStagingPath = Join-Path $outputPath "staging"
+$m365OutputPath = Resolve-ModulePath $OutputFolder
+$manifestStagingPath = Join-Path $m365OutputPath "manifest"
+$manifestPackagePath = Join-Path $m365OutputPath "package"
 $colorIconSourcePath = Resolve-ModulePath $ColorIconFile
 $outlineIconSourcePath = Resolve-ModulePath $OutlineIconFile
 $deployOutputPath = Resolve-ModulePath $DeployOutputFolder
@@ -109,6 +116,11 @@ $repoRoot = Resolve-ModulePath "../../"
 $envValues = Read-EnvFile -envPath $envFilePath
 $botAppId = Require-Value -source $envValues -key "MICROSOFT_APP_ID"
 $agentHost = if ($envValues.ContainsKey("AGENT_HOST")) { $envValues["AGENT_HOST"] } else { "localhost" }
+$agentValidDomain = if ($envValues.ContainsKey("AGENT_VALID_DOMAIN") -and -not [string]::IsNullOrWhiteSpace($envValues["AGENT_VALID_DOMAIN"])) {
+    $envValues["AGENT_VALID_DOMAIN"]
+} else {
+    $agentHost
+}
 $webAppNameEffective = if ([string]::IsNullOrWhiteSpace($WebAppName)) {
     if ($envValues.ContainsKey("WEB_APP_NAME") -and -not [string]::IsNullOrWhiteSpace($envValues["WEB_APP_NAME"])) {
         $envValues["WEB_APP_NAME"]
@@ -133,13 +145,28 @@ if (-not [Guid]::TryParse($botAppId, [ref]$parsedGuid)) {
     throw "MICROSOFT_APP_ID no tiene formato GUID válido: $botAppId"
 }
 
-New-Item -ItemType Directory -Path $manifestStagingPath -Force | Out-Null
+Ensure-Directory -path $m365OutputPath
+Ensure-Directory -path $manifestStagingPath
+Ensure-Directory -path $manifestPackagePath
 
-Ensure-PathExists -path $colorIconSourcePath -label "Icono color origen"
-Ensure-PathExists -path $outlineIconSourcePath -label "Icono outline origen"
+Get-ChildItem -LiteralPath $manifestStagingPath -File -ErrorAction SilentlyContinue |
+    Where-Object { $_.Name -in @("manifest.json", "agenticUserTemplateManifest.json") } |
+    ForEach-Object { Remove-Item -LiteralPath $_.FullName -Force }
 
-Copy-IfDifferent -Source $colorIconSourcePath -Destination (Join-Path $manifestStagingPath "color.png")
-Copy-IfDifferent -Source $outlineIconSourcePath -Destination (Join-Path $manifestStagingPath "outline.png")
+$manifestColorIconPath = Join-Path $manifestStagingPath "color.png"
+$manifestOutlineIconPath = Join-Path $manifestStagingPath "outline.png"
+
+if (Test-Path -LiteralPath $colorIconSourcePath) {
+    Copy-IfDifferent -Source $colorIconSourcePath -Destination $manifestColorIconPath
+} else {
+    throw "Icono color origen no encontrado: $colorIconSourcePath"
+}
+
+if (Test-Path -LiteralPath $outlineIconSourcePath) {
+    Copy-IfDifferent -Source $outlineIconSourcePath -Destination $manifestOutlineIconPath
+} else {
+    throw "Icono outline origen no encontrado: $outlineIconSourcePath"
+}
 
 $template = Get-Content -LiteralPath $templatePath -Raw | ConvertFrom-Json
 
@@ -149,7 +176,19 @@ if ($template.bots.Count -lt 1) {
     throw "La plantilla no contiene definición de bots."
 }
 $template.bots[0].botId = $botAppId
-$template.validDomains = @($agentHost)
+
+if ($template.PSObject.Properties.Name -contains "copilotAgents") {
+    $copilotAgents = $template.copilotAgents
+    if ($null -ne $copilotAgents -and ($copilotAgents.PSObject.Properties.Name -contains "customEngineAgents")) {
+        foreach ($agent in $copilotAgents.customEngineAgents) {
+            if ($null -ne $agent -and ($agent.PSObject.Properties.Name -contains "id")) {
+                $agent.id = $botAppId
+            }
+        }
+    }
+}
+
+$template.validDomains = @($agentValidDomain)
 
 $colorIconPath = Join-Path $manifestStagingPath $template.icons.color
 $outlineIconPath = Join-Path $manifestStagingPath $template.icons.outline
@@ -158,7 +197,9 @@ Ensure-PathExists -path $outlineIconPath -label "Icono outline"
 
 $manifest = $template
 $manifestPath = Join-Path $manifestStagingPath "manifest.json"
+$agenticUserTemplateManifestPath = Join-Path $manifestStagingPath "agenticUserTemplateManifest.json"
 $manifest | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
+$manifest | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath $agenticUserTemplateManifestPath -Encoding UTF8
 
 $projectName = if ($envValues.ContainsKey("PROJECT_NAME")) { $envValues["PROJECT_NAME"] } else { "" }
 if ([string]::IsNullOrWhiteSpace($projectName) -and $template.name -and $template.name.short) {
@@ -170,22 +211,18 @@ if ([string]::IsNullOrWhiteSpace($projectSlug)) {
     $projectSlug = "m365-agent"
 }
 
-if (-not (Test-Path -LiteralPath $outputPath)) {
-    New-Item -ItemType Directory -Path $outputPath -Force | Out-Null
-}
-
-$zipPath = Join-Path $outputPath "$projectSlug-m365-manifest.zip"
-if (Test-Path -LiteralPath $zipPath) {
-    Remove-Item -LiteralPath $zipPath -Force
+$zipPath = Join-Path $manifestPackagePath "manifest.zip"
+Get-ChildItem -LiteralPath $manifestPackagePath -File -Filter "*.zip" -ErrorAction SilentlyContinue | ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
 }
 
 Compress-Archive -Path (Join-Path $manifestStagingPath "*") -DestinationPath $zipPath -CompressionLevel Optimal
 
-if (-not (Test-Path -LiteralPath $deployOutputPath)) {
-    New-Item -ItemType Directory -Path $deployOutputPath -Force | Out-Null
-}
+Ensure-Directory -path $deployOutputPath
 
-$appStagingPath = Join-Path $deployOutputPath "staging-webapp"
+$appStagingPath = Join-Path $deployOutputPath "staging"
+$appPackagePath = Join-Path $deployOutputPath "package"
+Ensure-Directory -path $appPackagePath
 if (Test-Path -LiteralPath $appStagingPath) {
     Remove-Item -LiteralPath $appStagingPath -Recurse -Force
 }
@@ -206,10 +243,17 @@ Copy-Item -LiteralPath $mainPyPath -Destination (Join-Path $appStagingPath "main
 Copy-Item -LiteralPath $mainM365PyPath -Destination (Join-Path $appStagingPath "main_m365.py") -Force
 Copy-Item -LiteralPath $requirementsPath -Destination (Join-Path $appStagingPath "requirements.txt") -Force
 
+Get-ChildItem -LiteralPath (Join-Path $appStagingPath "app") -Directory -Filter "__pycache__" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Recurse -Force -ErrorAction SilentlyContinue
+}
+Get-ChildItem -LiteralPath $appStagingPath -File -Filter "*.pyc" -Recurse -ErrorAction SilentlyContinue | ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
+}
+
 $timestamp = Get-Date -Format "yyyyMMdd-HHmmss"
-$appZipPath = Join-Path $deployOutputPath "$projectSlug-appservice-$timestamp.zip"
-if (Test-Path -LiteralPath $appZipPath) {
-    Remove-Item -LiteralPath $appZipPath -Force
+$appZipPath = Join-Path $appPackagePath "webapp.zip"
+Get-ChildItem -LiteralPath $appPackagePath -File -Filter "*.zip" -ErrorAction SilentlyContinue | ForEach-Object {
+    Remove-Item -LiteralPath $_.FullName -Force -ErrorAction SilentlyContinue
 }
 
 Compress-Archive -Path (Join-Path $appStagingPath "*") -DestinationPath $appZipPath -CompressionLevel Optimal

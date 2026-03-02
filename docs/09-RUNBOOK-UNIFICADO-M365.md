@@ -67,18 +67,21 @@ $appCloud = "https://wapp-agent-identities-viewer.azurewebsites.net/api/messages
 
 ```powershell
 Set-Location "$repo"
-"exit" | python .\main.py cli
+"exit" | .\.venv\Scripts\python.exe .\main.py cli
 ```
 
 PASS esperado:
 - Arranca sin excepción.
 - Sale limpio con `exit`.
 
+Nota operativa:
+- Evitar `python` genérico de WindowsApps; usar siempre el intérprete del `.venv` para mantener dependencias y auth Entra ID consistentes.
+
 ## 2.2 Arranque runtime M365
 
 ```powershell
 Set-Location "$repo"
-python .\main_m365.py
+.\.venv\Scripts\python.exe .\main_m365.py
 ```
 
 Si falla con puerto ocupado (`Errno 10048`): cerrar proceso previo o cambiar `PORT` en `.env`.
@@ -91,15 +94,54 @@ Invoke-RestMethod -Uri "http://localhost:3978/api/messages" -Method Get
 
 En Fase 3 puede responder `401` por enforcement de auth. El estado esperado funcional del runbook es endpoint operativo y protegido.
 
-## 2.4 POST funcional manual (expectReplies)
+## 2.4 POST manual (diagnóstico de autenticación)
+
+Nota:
+- Este endpoint exige `Authorization: Bearer <token>`.
+- Esta prueba es diagnóstica y no sustituye la validación funcional de canal.
+- La validación funcional autenticada en Fase 3 se realiza con `teamsapptester` (punto 3.6).
 
 ```powershell
+Set-Location "$repo"
+
+# 0) Cargar variables de .env en la sesión actual
+Get-Content .env | ForEach-Object {
+  if ($_ -match '^\s*#' -or $_ -match '^\s*$') { return }
+  if ($_ -match '^\s*([^=]+)=(.*)$') {
+    [Environment]::SetEnvironmentVariable($matches[1].Trim(), $matches[2].Trim(), 'Process')
+  }
+}
+
+# 1) Validar variables requeridas
+$cid = $env:MICROSOFT_APP_ID
+$cs  = $env:MICROSOFT_APP_PASSWORD
+$tid = $env:MICROSOFT_APP_TENANTID
+
+if ([string]::IsNullOrWhiteSpace($cid) -or [string]::IsNullOrWhiteSpace($cs) -or [string]::IsNullOrWhiteSpace($tid)) {
+  throw "Faltan variables MICROSOFT_APP_ID / MICROSOFT_APP_PASSWORD / MICROSOFT_APP_TENANTID"
+}
+
+# 2) Obtener token (client credentials, prueba diagnóstica)
+$tokenResp = Invoke-RestMethod `
+  -Method Post `
+  -Uri "https://login.microsoftonline.com/$tid/oauth2/v2.0/token" `
+  -ContentType "application/x-www-form-urlencoded" `
+  -Body @{
+    client_id     = $cid
+    client_secret = $cs
+    grant_type    = "client_credentials"
+    scope         = "api://$cid/.default"
+  }
+
+$token = $tokenResp.access_token
+
+# 3) POST autenticado
 $body = @{
   type = 'message'
   id = 'activity-local-1'
   timestamp = (Get-Date).ToString('o')
   serviceUrl = 'http://localhost:3978'
-  channelId = 'emulator'
+  channelId = 'msteams'
   from = @{ id='user-1'; name='Carlos' }
   conversation = @{ id='conv-local-1'; conversationType='personal' }
   recipient = @{ id='bot-1'; name='SimpleChat' }
@@ -107,12 +149,21 @@ $body = @{
   deliveryMode = 'expectReplies'
 } | ConvertTo-Json -Depth 8
 
-Invoke-RestMethod -Uri "http://localhost:3978/api/messages" -Method Post -ContentType "application/json" -Body $body | ConvertTo-Json -Depth 10
+Invoke-RestMethod `
+  -Uri "http://localhost:3978/api/messages" `
+  -Method Post `
+  -ContentType "application/json" `
+  -Headers @{ Authorization = "Bearer $token" } `
+  -Body $body | ConvertTo-Json -Depth 10
 ```
 
 PASS esperado:
-- Respuesta con `activities`.
-- Al menos una actividad `message` con texto del agente.
+- Si se invoca sin cabecera: `401` con `Authorization header not found`.
+- Si se solicita token con `scope=api://$cid/.default` y la app no expone API (`identifierUris` vacío): error Entra `AADSTS500011 invalid_resource`.
+- Para PASS funcional del canal (comandos `/help`, `/clear`, mensaje libre), ejecutar `teamsapptester` en el punto 3.6.
+
+Si el objetivo es validar end-to-end autenticado:
+- Omitir esta prueba manual y usar directamente el punto 3.6.
 
 ## 2.5 Playground local básico
 
