@@ -26,6 +26,13 @@ on:
   schedule:
     - cron: '19 16 * * 2'
 
+# 👇 Imprescindible para que GitHub emita un OIDC token (federación con Defender for Cloud)
+# y para poder subir el SARIF a la pestaña Security del repo.
+permissions:
+  contents: read              # mínimo recomendado
+  security-events: write      # necesario para upload-sarif a la pestaña Security
+  id-token: write             # necesario para federación OIDC con Defender for Cloud
+
 jobs:
   MSDO:
     # currently only windows latest is supported
