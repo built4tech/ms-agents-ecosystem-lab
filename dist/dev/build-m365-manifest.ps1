@@ -103,6 +103,46 @@ function To-Slug([string]$value) {
     return $slug
 }
 
+function Resolve-ValidDomain {
+    param([hashtable]$EnvValues, [string]$AgentHost)
+
+    if ($EnvValues.ContainsKey("AGENT_VALID_DOMAIN") -and -not [string]::IsNullOrWhiteSpace($EnvValues["AGENT_VALID_DOMAIN"])) {
+        return $EnvValues["AGENT_VALID_DOMAIN"].Trim()
+    }
+
+    if ($EnvValues.ContainsKey("AGENT_MESSAGES_ENDPOINT") -and -not [string]::IsNullOrWhiteSpace($EnvValues["AGENT_MESSAGES_ENDPOINT"])) {
+        $endpoint = $EnvValues["AGENT_MESSAGES_ENDPOINT"].Trim()
+        try {
+            $uri = [System.Uri]$endpoint
+            if (-not [string]::IsNullOrWhiteSpace($uri.Host)) {
+                return $uri.Host
+            }
+        } catch {
+        }
+    }
+
+    if ($EnvValues.ContainsKey("WEB_APP_NAME") -and -not [string]::IsNullOrWhiteSpace($EnvValues["WEB_APP_NAME"])) {
+        $webAppNameOrHost = $EnvValues["WEB_APP_NAME"].Trim()
+        if ($webAppNameOrHost.Contains(".")) {
+            return $webAppNameOrHost
+        }
+        return "$webAppNameOrHost.azurewebsites.net"
+    }
+
+    return $AgentHost
+}
+
+function Set-ManifestValidDomains {
+    param(
+        [string]$ManifestPath,
+        [string]$Domain
+    )
+
+    $manifestJson = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    $manifestJson.validDomains = @($Domain)
+    $manifestJson | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath $ManifestPath -Encoding UTF8
+}
+
 $envFilePath = Resolve-ModulePath $EnvironmentFile
 $templatePath = Resolve-ModulePath $TemplateFile
 $m365OutputPath = Resolve-ModulePath $OutputFolder
@@ -116,11 +156,7 @@ $repoRoot = Resolve-ModulePath "../../"
 $envValues = Read-EnvFile -envPath $envFilePath
 $botAppId = Require-Value -source $envValues -key "MICROSOFT_APP_ID"
 $agentHost = if ($envValues.ContainsKey("AGENT_HOST")) { $envValues["AGENT_HOST"] } else { "localhost" }
-$agentValidDomain = if ($envValues.ContainsKey("AGENT_VALID_DOMAIN") -and -not [string]::IsNullOrWhiteSpace($envValues["AGENT_VALID_DOMAIN"])) {
-    $envValues["AGENT_VALID_DOMAIN"]
-} else {
-    $agentHost
-}
+$agentValidDomain = Resolve-ValidDomain -EnvValues $envValues -AgentHost $agentHost
 $webAppNameEffective = if ([string]::IsNullOrWhiteSpace($WebAppName)) {
     if ($envValues.ContainsKey("WEB_APP_NAME") -and -not [string]::IsNullOrWhiteSpace($envValues["WEB_APP_NAME"])) {
         $envValues["WEB_APP_NAME"]
@@ -200,6 +236,9 @@ $manifestPath = Join-Path $manifestStagingPath "manifest.json"
 $agenticUserTemplateManifestPath = Join-Path $manifestStagingPath "agenticUserTemplateManifest.json"
 $manifest | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath $manifestPath -Encoding UTF8
 $manifest | ConvertTo-Json -Depth 16 | Set-Content -LiteralPath $agenticUserTemplateManifestPath -Encoding UTF8
+
+Set-ManifestValidDomains -ManifestPath $manifestPath -Domain $agentValidDomain
+Set-ManifestValidDomains -ManifestPath $agenticUserTemplateManifestPath -Domain $agentValidDomain
 
 $projectName = if ($envValues.ContainsKey("PROJECT_NAME")) { $envValues["PROJECT_NAME"] } else { "" }
 if ([string]::IsNullOrWhiteSpace($projectName) -and $template.name -and $template.name.short) {

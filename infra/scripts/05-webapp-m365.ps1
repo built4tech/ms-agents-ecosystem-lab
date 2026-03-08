@@ -312,12 +312,17 @@ Write-Success "Configuración de runtime aplicada"
 $defaultHostName = az webapp show --resource-group $script:ResourceGroupName --name $webAppName --query defaultHostName --output tsv
 Assert-AzSuccess -Message "No se pudo obtener el hostname de '$webAppName'."
 $webAppUrl = "https://$defaultHostName/api/messages"
+$agentValidDomain = $defaultHostName
 
 $null = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "05-webapp-m365.ps1" -SectionValues @{
-    WEB_APP_NAME = $webAppName
+    WEB_APP_NAME            = $webAppName
+    AGENT_MESSAGES_ENDPOINT = $webAppUrl
+    AGENT_VALID_DOMAIN      = $agentValidDomain
 }
 
 Write-Host "`n$('-'*60)" -ForegroundColor Gray
 Write-Host " ACTUALIZACIÓN DE .env.generated" -ForegroundColor Yellow
 Write-Host $('-'*60) -ForegroundColor Gray
 Write-Endpoint "WEB_APP_NAME" $webAppName
+Write-Endpoint "AGENT_MESSAGES_ENDPOINT" $webAppUrl
+Write-Endpoint "AGENT_VALID_DOMAIN" $agentValidDomain

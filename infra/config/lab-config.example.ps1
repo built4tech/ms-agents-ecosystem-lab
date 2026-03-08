@@ -15,10 +15,12 @@ $script:WebAppLocation = "spaincentral"
 $script:ResourceGroupName = "rg-agents-lab"
 
 # Modelo a desplegar en el recurso Foundry
-$script:ModelName = "gpt-4o-mini"
-$script:ModelVersion = "2024-07-18"
+# NOTA: gpt-4o (2024-11-20) soporta HostedWebSearchTool garantizado
+$script:ModelName = "gpt-4o"
+$script:ModelVersion = "2024-11-20"
 $script:ModelSku = "GlobalStandard"
-$script:ModelCapacity = 10  # TPM en miles (10 = 10K tokens por minuto)
+$script:ModelCapacity = 100  # TPM en miles (100 = 100K tokens por minuto)
+$script:ApiVersion = "2024-12-01"  # Versión de API con soporte completo para web search
 
 # Recurso Foundry para MAF
 $script:FoundryName = "agent-identity-viewer"

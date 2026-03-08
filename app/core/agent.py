@@ -4,20 +4,54 @@ from pathlib import Path
 
 from app.core.interfaces import AgentInterface
 from app.core.runtime_env import is_cloud_runtime, load_local_env_if_needed
+from app.core.tools import get_weather_by_city, route_tools_for_message
+# from app.core.tools import web_search_tool  # No soportado con AzureOpenAIChatClient
 
-from azure.identity import AzureCliCredential, DefaultAzureCredential
+from azure.identity import DefaultAzureCredential
 
 from agent_framework.azure import AzureOpenAIChatClient
-from agent_framework import ChatAgent, AgentThread
+from agent_framework import ChatAgent, AgentThread, ChatMessage, Content
 
 # Configuración del logger a nivel INFO para mostrar mensajes informativos durante la ejecución del agente.
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+TOOL_LIMIT_HINTS = (
+    "max_invocations",
+    "max invocations",
+    "invocation limit",
+    "too many invocations",
+)
+
+APPROVAL_YES = {"si", "yes", "approve", "ok", "vale", "confirm"}
+APPROVAL_NO = {"no", "cancel", "cancelar", "rechazar"}
+
 # Configurar httpx para no mostrar logs (propagate=False evita que los mensajes suban al logger raíz)
 logging.getLogger("httpx").propagate = False
 
 ENV_FILE = load_local_env_if_needed(Path(__file__).resolve())
+
+
+def _get_azure_credential():
+    """Devuelve la credencial Azure apropiada para el entorno actual.
+    
+    - En cloud: usa DefaultAzureCredential (Managed Identity preferida)
+    - En local: usa DefaultAzureCredential que intentará Azure CLI, VS Code, etc.
+    """
+    if is_cloud_runtime():
+        return DefaultAzureCredential(exclude_interactive_browser_credential=True)
+    else:
+        # En local, DefaultAzureCredential probará múltiples métodos:
+        # 1. Environment variables
+        # 2. Workload Identity
+        # 3. Managed Identity
+        # 4. Azure CLI
+        # 5. Azure PowerShell
+        # 6. Visual Studio Code
+        return DefaultAzureCredential(
+            exclude_interactive_browser_credential=True,
+            exclude_shared_token_cache_credential=True,
+        )
 
 
 class SimpleChatAgent(AgentInterface):
@@ -40,6 +74,7 @@ class SimpleChatAgent(AgentInterface):
         self.chat_client: AzureOpenAIChatClient | None = None
         self.agent: ChatAgent | None = None
         self.agent_thread: AgentThread | None = None
+        self._pending_approval: Content | None = None
 
         # No se llama a initialize en el constructor, ya que es un método asíncrono y no se pueden llamar métodos asíncronos desde el constructor.
         # En vez de ello, llamar a initialize desde el código que instancia el agente,
@@ -65,12 +100,9 @@ class SimpleChatAgent(AgentInterface):
             logger.error("Faltan variables obligatorias: ENDPOINT_OPENAI/ENDPOINT_API, DEPLOYMENT_NAME o API_VERSION")
             raise ValueError("Falta alguna de las variables de entorno necesarias: ENDPOINT_OPENAI/ENDPOINT_API, DEPLOYMENT_NAME, API_VERSION")
         
-        if is_cloud_runtime():
-            credential = DefaultAzureCredential(exclude_interactive_browser_credential=True)
-            logger.debug("Usando autenticación Entra ID en cloud con DefaultAzureCredential.")
-        else:
-            credential = AzureCliCredential()
-            logger.debug("Usando autenticación Entra ID local con AzureCliCredential.")
+        credential = _get_azure_credential()
+        env_type = "cloud" if is_cloud_runtime() else "local"
+        logger.info(f"Usando autenticación Entra ID ({env_type}) con DefaultAzureCredential.")
         
         # Creación del cliente de chat utilizando las variables de entorno y la autenticación configurada
         self.chat_client = AzureOpenAIChatClient(
@@ -88,7 +120,9 @@ class SimpleChatAgent(AgentInterface):
         self.agent = ChatAgent(
             chat_client=self.chat_client,
             instructions=self.AGENT_PROMPT,
-            tools=[],
+            tools=[get_weather_by_city],
+            # web_search_tool no soportado con AzureOpenAIChatClient
+            # Requiere Azure AI Foundry Agents Service o Bing Search resource
             )
         logger.info("✅ Agente creado y vinculado al cliente de chat.")
 
@@ -120,6 +154,20 @@ class SimpleChatAgent(AgentInterface):
         if message.lower() in ["exit", "salir", "quit", "adios"]:
             logger.debug("Comando de salida detectado.")
             response = "¡Adiós! Que tengas un buen día."
+        elif self._pending_approval is not None:
+            normalized = message.strip().lower()
+            if normalized in APPROVAL_YES:
+                logger.debug("Aprobacion recibida para tool pendiente.")
+                approval_response = self._pending_approval.to_function_approval_response(approved=True)
+                self._pending_approval = None
+                approval_message = ChatMessage(role="user", contents=[approval_response])
+                response = await self.agent.run([approval_message], thread=self.agent_thread)
+            elif normalized in APPROVAL_NO:
+                logger.debug("Aprobacion rechazada para tool pendiente.")
+                self._pending_approval = None
+                response = "Entendido, no ejecutare la herramienta."
+            else:
+                response = "Necesito una confirmacion: responde 'si' para aprobar o 'no' para cancelar."
         elif message.lower() in ["clear", "limpiar"]:
             logger.debug("Comando de limpieza detectado, reiniciando hilo.")
             # Reinicia el hilo del agente para limpiar el historial de conversación y comenzar un nuevo chat
@@ -133,14 +181,38 @@ class SimpleChatAgent(AgentInterface):
             # utilizando el LLM configurado.
             try:
                 logger.debug(f"Enviando mensaje al agente: {message}")
-                response = await self.agent.run(message, thread=self.agent_thread)
+                tools_for_call = route_tools_for_message(message)
+                response = await self.agent.run(message, thread=self.agent_thread, tools=tools_for_call)
                 logger.debug("Respuesta generada por el agente.")
             except Exception as e:
                 logger.error(f"Error al procesar el mensaje: {e}", exc_info=True)
-                response = "Lo siento, ocurrió un error al procesar tu mensaje."
+                error_text = str(e).lower()
+                if any(hint in error_text for hint in TOOL_LIMIT_HINTS):
+                    response = (
+                        "Se alcanzó el límite de uso de una herramienta en esta conversación. "
+                        "Puedes escribir 'clear' para reiniciar el chat e intentarlo de nuevo."
+                    )
+                else:
+                    response = "Lo siento, ocurrió un error al procesar tu mensaje."
 
         logger.debug(f"Usuario: {message}")
         response_text = response.text if hasattr(response, 'text') else str(response)
+        if not response_text and hasattr(response, "messages"):
+            pending_request = None
+            for msg in response.messages:
+                for content in msg.contents:
+                    if getattr(content, "type", None) == "function_approval_request":
+                        pending_request = content
+                        break
+                if pending_request is not None:
+                    break
+            if pending_request is not None:
+                self._pending_approval = pending_request
+                tool_name = pending_request.function_call.name if hasattr(pending_request, "function_call") else None
+                response_text = (
+                    f"Necesito tu aprobacion para ejecutar la herramienta"
+                    f"{f' {tool_name}' if tool_name else ''}. Responde 'si' para aprobar o 'no' para cancelar."
+                )
         logger.debug(f"Asistente: {response_text}")
 
         return response_text

@@ -29,6 +29,9 @@ function Get-EnvGeneratedDefaults {
         OTEL_SERVICE_NAME                        = ""
         OTEL_SERVICE_NAMESPACE                   = ""
         WEB_APP_NAME                             = ""
+        AGENT_MESSAGES_ENDPOINT                  = ""
+        AGENT_VALID_DOMAIN                       = ""
+        BOT_SERVICE_NAME                         = ""
     }
 }
 
@@ -38,7 +41,8 @@ function Get-EnvGeneratedSectionNames {
         "02-foundry-maf.ps1",
         "03-m365-service-principal.ps1",
         "04-observability.ps1",
-        "05-webapp-m365.ps1"
+        "05-webapp-m365.ps1",
+        "06-bot-service.ps1"
     )
 }
 
@@ -142,8 +146,18 @@ OTEL_SERVICE_NAMESPACE=$($Values.OTEL_SERVICE_NAMESPACE)
 # ----------------------------------------------------------------------------
 # Fichero: 05-webapp-m365.ps1 | Fecha: $($Dates["05-webapp-m365.ps1"])
 # ----------------------------------------------------------------------------
-# We Application
+# Web Application
 WEB_APP_NAME=$($Values.WEB_APP_NAME)
+# Endpoint público para enrutar tráfico de Bot Service / Copilot / Teams.
+AGENT_MESSAGES_ENDPOINT=$($Values.AGENT_MESSAGES_ENDPOINT)
+# Dominio válido que se usa en manifest.validDomains para publicación M365.
+AGENT_VALID_DOMAIN=$($Values.AGENT_VALID_DOMAIN)
+
+# ----------------------------------------------------------------------------
+# Fichero: 06-bot-service.ps1 | Fecha: $($Dates["06-bot-service.ps1"])
+# ----------------------------------------------------------------------------
+# Registro Azure Bot Service asociado al endpoint del agente.
+BOT_SERVICE_NAME=$($Values.BOT_SERVICE_NAME)
 "@
 }
 

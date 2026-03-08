@@ -31,6 +31,14 @@ def create_agent_application(adapter: CloudAdapter | None = None) -> AgentApplic
 
     @agent_app.conversation_update("membersAdded")
     async def on_members_added(context: TurnContext, _: TurnState):
+        while True:
+            try:
+                await _ensure_started()
+                break
+            except Exception as e:
+                print(f"Error durante startup del agente: {e}. Reintentando en 5 segundos...")
+                await asyncio.sleep(5)
+                
         await context.send_activity(
             "Hola, soy tu agente conectado a Foundry. Escribe /help para ayuda."
         )

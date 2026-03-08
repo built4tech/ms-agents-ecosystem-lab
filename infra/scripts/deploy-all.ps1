@@ -131,6 +131,57 @@ try {
     exit 1
 }
 
+$script06Path = Join-Path $scriptPath "06-bot-service.ps1"
+if (-not (Test-Path $script06Path)) {
+    Write-Host "Script no encontrado: $script06Path" -ForegroundColor Red
+    exit 1
+}
+
+Write-Host ""
+Write-Host -NoNewline ">> POST-05" -ForegroundColor Red
+Write-Host " - Configuración Azure Bot Service + MsTeamsChannel"
+Write-Host "Se puede ejecutar el paso opcional de canal M365:" -ForegroundColor Yellow
+Write-Host "  script : $script06Path" -ForegroundColor Yellow
+Write-Host "  efecto : crea/actualiza bot registration, endpoint y canal Teams" -ForegroundColor Yellow
+
+$confirmation06 = Read-Host "¿Deseas ejecutar 06-bot-service.ps1 ahora? (y/Y para sí; cualquier otra tecla omite)"
+if ($confirmation06 -in @("y", "Y")) {
+    Write-Host ""
+    Write-Host ">> 06-bot-service.ps1 - Configurar Bot Service M365" -ForegroundColor Red
+
+    try {
+        $env:SKIP_INFRA_PREREQS = "1"
+        $env:RUNNING_FROM_DEPLOY_ALL = "1"
+        & $script06Path
+    } catch {
+        Write-Host ""
+        Write-Host "╔══════════════════════════════════════════════════════════════╗" -ForegroundColor Red
+        Write-Host "║ ERROR en 06-bot-service.ps1" -ForegroundColor Red
+        Write-Host "║ $($_.Exception.Message)" -ForegroundColor Red
+        Write-Host "╚══════════════════════════════════════════════════════════════╝" -ForegroundColor Red
+        exit 1
+    } finally {
+        Remove-Item Env:SKIP_INFRA_PREREQS -ErrorAction SilentlyContinue
+        Remove-Item Env:RUNNING_FROM_DEPLOY_ALL -ErrorAction SilentlyContinue
+    }
+
+    try {
+        if (Test-Path $envPath) {
+            Copy-Item -Path $envPath -Destination $envBackupPath -Force
+            Write-Host "Backup generado (post-06): $envBackupPath" -ForegroundColor Green
+        }
+
+        Copy-Item -Path $envGeneratedPath -Destination $envPath -Force
+        Write-Host "Copia post-06 aplicada: .env.generated -> .env" -ForegroundColor Green
+    } catch {
+        Write-Host "Error sincronizando .env tras 06: $($_.Exception.Message)" -ForegroundColor Red
+        exit 1
+    }
+}
+else {
+    Write-Host "Paso 06 omitido por decisión del usuario." -ForegroundColor Yellow
+}
+
 $endTime = Get-Date
 $duration = $endTime - $startTime
 
@@ -148,5 +199,7 @@ Write-Host "    3) 03-m365-service-principal.ps1" -ForegroundColor Yellow
 Write-Host "    4) 04-observability.ps1" -ForegroundColor Yellow
 Write-Host "    5) backup/copia .env.generated -> .env (con confirmación)" -ForegroundColor Yellow
 Write-Host "    6) 05-webapp-m365.ps1" -ForegroundColor Yellow
-Write-Host "    7) sincronización final .env.generated -> .env" -ForegroundColor Yellow
+Write-Host "    7) sincronización post-05 .env.generated -> .env" -ForegroundColor Yellow
+Write-Host "    8) (opcional) 06-bot-service.ps1" -ForegroundColor Yellow
+Write-Host "    9) (si aplica) sincronización post-06 .env.generated -> .env" -ForegroundColor Yellow
 Write-Host ""

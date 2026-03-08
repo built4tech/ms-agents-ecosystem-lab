@@ -219,7 +219,7 @@ if ($projectExists) {
 }
 
 # ============================================================================
-# 3. Desplegar modelo gpt-4o-mini en Foundry
+# 3. Desplegar modelo gpt-4o en Foundry
 # ============================================================================
 Write-Step "Desplegando modelo $($script:ModelName) en $foundryName..."
 
@@ -248,7 +248,7 @@ if ($deploymentExists) {
     Write-Success "Modelo desplegado exitosamente"
 }
 
-$apiVersion = if ($script:ApiVersion) { $script:ApiVersion } else { "2024-10-21" }
+$apiVersion = if ($script:ApiVersion) { $script:ApiVersion } else { "2024-12-01" }
 $null = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "02-foundry-maf.ps1" -SectionValues @{
     ENDPOINT_API    = "https://$($foundryInfo.name).services.ai.azure.com"
     ENDPOINT_OPENAI = "https://$($foundryInfo.name).openai.azure.com"
