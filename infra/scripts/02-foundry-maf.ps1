@@ -250,7 +250,7 @@ if ($deploymentExists) {
 
 $apiVersion = if ($script:ApiVersion) { $script:ApiVersion } else { "2024-12-01" }
 $null = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "02-foundry-maf.ps1" -SectionValues @{
-    ENDPOINT_API    = "https://$($foundryInfo.name).services.ai.azure.com"
+    ENDPOINT_API    = "https://$($foundryInfo.name).services.ai.azure.com/api/projects/$projectName"
     ENDPOINT_OPENAI = "https://$($foundryInfo.name).openai.azure.com"
     DEPLOYMENT_NAME = $deploymentName
     PROJECT_NAME    = $projectName
@@ -260,7 +260,7 @@ $null = Update-EnvGeneratedSection -ScriptPath $scriptPath -SectionName "02-foun
 Write-Host "`n$('-'*60)" -ForegroundColor Gray
 Write-Host " ACTUALIZACIÓN DE .env.generated" -ForegroundColor Yellow
 Write-Host $('-'*60) -ForegroundColor Gray
-Write-Endpoint "ENDPOINT_API" "https://$($foundryInfo.name).services.ai.azure.com"
+Write-Endpoint "ENDPOINT_API" "https://$($foundryInfo.name).services.ai.azure.com/api/projects/$projectName"
 Write-Endpoint "ENDPOINT_OPENAI" "https://$($foundryInfo.name).openai.azure.com"
 Write-Endpoint "DEPLOYMENT_NAME" $deploymentName
 Write-Endpoint "PROJECT_NAME" $projectName

@@ -4,12 +4,11 @@ from pathlib import Path
 
 from app.core.interfaces import AgentInterface
 from app.core.runtime_env import is_cloud_runtime, load_local_env_if_needed
-from app.core.tools import get_weather_by_city, route_tools_for_message
-# from app.core.tools import web_search_tool  # No soportado con AzureOpenAIChatClient
+from app.core.tools import get_weather_by_city, web_search_tool, route_tools_for_message
 
 from azure.identity import DefaultAzureCredential
 
-from agent_framework.azure import AzureOpenAIChatClient
+from agent_framework_azure_ai import AzureAIClient
 from agent_framework import ChatAgent, AgentThread, ChatMessage, Content
 
 # Configuración del logger a nivel INFO para mostrar mensajes informativos durante la ejecución del agente.
@@ -62,16 +61,20 @@ class SimpleChatAgent(AgentInterface):
     # Definición del prompt que se le dará al agente para guiar su comportamiento, se establece como una variable de clase, en vez de como una variable de instancia, 
     # de esta forma es fácilmente modificable y accesible en toda la clase.
     AGENT_PROMPT = (
-    "Eres un agente conversacional claro y conciso."
-    " Responde en espanol a menos que el usuario use otro idioma"
-    " y prioriza respuestas breves y accionables."
+    "Eres un agente conversacional claro y conciso que puede buscar información en internet."
+    " Responde en español a menos que el usuario use otro idioma y prioriza respuestas breves y accionables."
+    " Cuando el usuario pregunte sobre temas actuales, noticias o información reciente,"
+    " usa la herramienta web_search para obtener información actualizada."
+    " Evita usar web_search para consultas muy genéricas o ataques de scraping."
+    " En su lugar, realiza búsquedas específicas por tema o área de interés."
+    " Siempre proporciona contexto de dónde proviene la información."
     )
 
     def __init__(self) -> None:
         """Constructor del agente, no requiere parámetros de inicialización."""
         
         # Definición de las variables de instancia para el cliente de chat y el agente, se inicializan como None y se configuran en el método initialize
-        self.chat_client: AzureOpenAIChatClient | None = None
+        self.chat_client: AzureAIClient | None = None
         self.agent: ChatAgent | None = None
         self.agent_thread: AgentThread | None = None
         self._pending_approval: Content | None = None
@@ -86,45 +89,41 @@ class SimpleChatAgent(AgentInterface):
 
         
     def _create_chat_client(self) -> None:
-        """Crea un cliente de chat que posteriormente vincularemos con el agente."""
+        """Crea un cliente de chat Azure AI que posteriormente vincularemos con el agente."""
         
         # Obtención de las variables de entorno necesarias para configurar el cliente de chat
-        logger.debug("Obteniendo variables de entorno: ENDPOINT_OPENAI/ENDPOINT_API, DEPLOYMENT_NAME, API_VERSION")
-        endpoint     = os.getenv("ENDPOINT_OPENAI") or os.getenv("ENDPOINT_API")
+        logger.debug("Obteniendo variables de entorno: ENDPOINT_API, DEPLOYMENT_NAME")
+        endpoint_api = os.getenv("ENDPOINT_API")
         deployment   = os.getenv("DEPLOYMENT_NAME")
-        api_version  = os.getenv("API_VERSION")
-        token_scope  = os.getenv("AZURE_OPENAI_TOKEN_ENDPOINT") or "https://cognitiveservices.azure.com/.default"
+        project_name = os.getenv("PROJECT_NAME")
 
         # Comprobación de que todas las variables necesarias están presentes, si falta alguna se lanza una excepción
-        if not all([endpoint, deployment, api_version]):
-            logger.error("Faltan variables obligatorias: ENDPOINT_OPENAI/ENDPOINT_API, DEPLOYMENT_NAME o API_VERSION")
-            raise ValueError("Falta alguna de las variables de entorno necesarias: ENDPOINT_OPENAI/ENDPOINT_API, DEPLOYMENT_NAME, API_VERSION")
+        if not all([endpoint_api, deployment]):
+            logger.error("Faltan variables obligatorias: ENDPOINT_API o DEPLOYMENT_NAME")
+            raise ValueError("Falta alguna de las variables de entorno necesarias: ENDPOINT_API, DEPLOYMENT_NAME")
         
         credential = _get_azure_credential()
         env_type = "cloud" if is_cloud_runtime() else "local"
         logger.info(f"Usando autenticación Entra ID ({env_type}) con DefaultAzureCredential.")
         
-        # Creación del cliente de chat utilizando las variables de entorno y la autenticación configurada
-        self.chat_client = AzureOpenAIChatClient(
-            endpoint=endpoint,
+        # Creación del cliente de chat Azure AI con soporte para web search y herramientas avanzadas
+        self.chat_client = AzureAIClient(
+            project_endpoint=endpoint_api,
+            model_deployment_name=deployment,
             credential=credential,
-            token_endpoint=token_scope,
-            deployment_name=deployment,
-            api_version=api_version,            
         )
-        logger.info("✅ Cliente de chat creado exitosamente.")
+        logger.info("[OK] Cliente Azure AI creado exitosamente con soporte para web search.")
     
     def _create_agent(self) -> None:
         """Asigna el cliente de chat creado al agente para que pueda interactuar con el entorno."""
         logger.debug(f"Creando agente con prompt: {self.AGENT_PROMPT[:50]}...")
         self.agent = ChatAgent(
             chat_client=self.chat_client,
+            name="SimpleChatAgent",
             instructions=self.AGENT_PROMPT,
-            tools=[get_weather_by_city],
-            # web_search_tool no soportado con AzureOpenAIChatClient
-            # Requiere Azure AI Foundry Agents Service o Bing Search resource
+            tools=[get_weather_by_city, web_search_tool],
             )
-        logger.info("✅ Agente creado y vinculado al cliente de chat.")
+        logger.info("[OK] Agente creado con web search habilitado.")
 
     def _initialize_agent_thread(self) -> None:
         """Crea un hilo para ejecutar el agente de manera asíncrona, permitiendo que el agente procese mensajes sin bloquear la ejecución principal."""
@@ -134,7 +133,7 @@ class SimpleChatAgent(AgentInterface):
         
         logger.debug("Creando AgentThread...")
         self.agent_thread = self.agent.get_new_thread()
-        logger.info("✅ Hilo del agente iniciado exitosamente.")
+        logger.info("[OK] Hilo del agente iniciado exitosamente.")
 
     async def initialize(self) -> None:
         """Inicializa el agente cargando las variables de entorno necesarias."""
@@ -143,7 +142,7 @@ class SimpleChatAgent(AgentInterface):
         self._create_chat_client()
         self._create_agent()
         self._initialize_agent_thread()
-        logger.info("✅ Agente inicializado y listo para interactuar.")
+        logger.info("[OK] Agente inicializado y listo para interactuar.")
 
     async def process_user_message(self, message: str) -> str:
         """Procesa el mensaje del usuario y devuelve una respuesta predefinida."""
@@ -182,6 +181,7 @@ class SimpleChatAgent(AgentInterface):
             try:
                 logger.debug(f"Enviando mensaje al agente: {message}")
                 tools_for_call = route_tools_for_message(message)
+                logger.info(f"[TOOLS_CALL] Pasadas a agent.run(): {[t.name if hasattr(t, 'name') else type(t).__name__ for t in tools_for_call]}")
                 response = await self.agent.run(message, thread=self.agent_thread, tools=tools_for_call)
                 logger.debug("Respuesta generada por el agente.")
             except Exception as e:
@@ -221,4 +221,4 @@ class SimpleChatAgent(AgentInterface):
         """Limpia cualquier recurso utilizado por el agente (no es necesario en este caso pero se implementa para mantener la consistencia).
         Si el agente tuviera recursos como conexiones abiertas, archivos temporales, etc., aquí es donde se cerrarían o eliminarían."""
         logger.debug("Iniciando limpieza de recursos...")
-        logger.info("✅ Agente limpiado y recursos liberados.")
+        logger.info("[OK] Agente limpiado y recursos liberados.")
